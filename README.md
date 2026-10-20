@@ -55,6 +55,7 @@ git clone https://github.com/letrquan/ume ~/.config/quickshell/mine
 install -Dm755 ~/.config/quickshell/mine/extras/bin/mine    ~/.local/bin/mine
 install -Dm755 ~/.config/quickshell/mine/extras/bin/qs-lock ~/.local/bin/qs-lock
 cp ~/.config/quickshell/mine/extras/mango/shell-mine.conf ~/.config/mango/
+touch ~/.config/mango/noctalia-colors.conf   # the shell fills it with wallpaper colors
 ```
 
 Then add `source=./shell-mine.conf` to `~/.config/mango/config.conf`, log out and log back in.
