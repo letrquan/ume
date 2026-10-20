@@ -14,7 +14,7 @@ wallpaper, and every piece of the desktop in one shell.
 
 Every clip below is the real shell, recorded in a headless session with made-up data
 (notifications, music, calendar, clipboard). That session had no network or Bluetooth, so those
-show as off. The whole walkthrough as one video (2 min, MP4):
+show as off. The whole walkthrough as one video (2 min, 1920×1200 MP4, 37 MB):
 [walkthrough.mp4](https://github.com/letrquan/ume/releases/download/walkthrough/walkthrough.mp4).
 
 <table>
