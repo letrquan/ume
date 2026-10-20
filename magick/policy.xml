@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ImageMagick's rules for the shell's scripts that open pictures other apps
+  can drop (scripts/wallpaper-thumbs.sh, greeter-sync.sh, ocr.sh). They point
+  MAGICK_CONFIGURE_PATH at this folder.
+
+  ImageMagick reads every policy.xml it finds, this one first, then
+  /etc/ImageMagick-7/policy.xml; a later rule wins. The system one has no
+  rules today (`magick -list policy` shows both).
+
+  The scripts also name the decoder themselves (jpeg:, png:, webp: by the
+  file's ending), so a ".jpg" that is really PostScript or SVG is refused
+  twice: by the decoder, and here.
+-->
+<policymap>
+  <!-- No helper programs (Ghostscript for PS/EPS/PDF...), no filter
+       modules, no "@file" lists of more files. -->
+  <policy domain="delegate" rights="none" pattern="*"/>
+  <policy domain="filter" rights="none" pattern="*"/>
+  <policy domain="path" rights="none" pattern="@*"/>
+
+  <!-- Only these formats, read or written (JPG is JPEG by its ending);
+       everything else (PS, SVG, MVG, MSL, TEXT, URL, HTTPS...) is refused. -->
+  <policy domain="coder" rights="none" pattern="*"/>
+  <policy domain="coder" rights="read|write" pattern="{JPEG,JPG,PNG,WEBP}"/>
+
+  <!-- Sizes: an 8K picture fits (the largest wallpaper is ~4300 px wide);
+       a "decompression bomb" doesn't. -->
+  <policy domain="resource" name="width" value="16KP"/>
+  <policy domain="resource" name="height" value="16KP"/>
+  <policy domain="resource" name="list-length" value="16"/>
+  <policy domain="resource" name="memory" value="1GiB"/>
+  <policy domain="resource" name="map" value="2GiB"/>
+  <policy domain="resource" name="disk" value="2GiB"/>
+  <policy domain="resource" name="time" value="120"/>
+</policymap>

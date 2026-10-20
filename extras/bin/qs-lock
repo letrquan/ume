@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Lock the screen with my shell's lock screen
+# (~/.config/quickshell/mine/lock.qml, its look in mine/lock/; Settings →
+# Lock screen). Returns once the compositor has confirmed the lock. If that
+# doesn't happen within 4 s (the lock failed to start), falls back to
+# hyprlock, so the session is never left unlocked.
+#
+# MINE_LOCK_QML: another lock file (tests).
+set -u
+
+# My shell runs with Quickshell's crash handler off (its keeper,
+# scripts/shell-keeper.sh, restarts it instead) and the lock screens it
+# starts would inherit that. The lock keeps Quickshell's: nothing else can
+# bring it back while the session is locked.
+unset QS_DISABLE_CRASH_HANDLER
+
+lock_qml="${MINE_LOCK_QML:-$HOME/.config/quickshell/mine/lock.qml}"
+old_lock="$HOME/.config/quickshell/lock/shell.qml"    # the lock before 2026-10-15
+marker="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/qs-lock.secure"
+
+# `qs list` prints "No running instances ..." (plus a hint line) when none run.
+running() {
+    ! qs list "$@" 2>&1 | grep -q 'No running instances'
+}
+
+if running -p "$lock_qml" || { [ -e "$old_lock" ] && running -c lock; }; then
+    exit 0      # already locked
+fi
+
+rm -f "$marker"
+if [ -e "$lock_qml" ]; then
+    qs -n -d -p "$lock_qml" >/dev/null 2>&1
+elif [ -e "$old_lock" ]; then
+    qs -n -d -c lock >/dev/null 2>&1
+fi
+
+for _ in $(seq 40); do
+    [ -e "$marker" ] && exit 0
+    sleep 0.1
+done
+
+echo "qs-lock: the Quickshell lock did not confirm, using hyprlock" >&2
+exec hyprlock --immediate

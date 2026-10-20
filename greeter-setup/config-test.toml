@@ -1,0 +1,11 @@
+# greetd, TEST mode (written by greeter-install.sh). GDM is still your login
+# screen. greeter-test-start.sh starts this on VT 7: press Ctrl+Alt+F7 to
+# see it, Ctrl+Alt+F2 to come back. A right password only says "Password OK
+# (test mode)"; nothing starts. greeter-test-stop.sh ends it.
+[terminal]
+vt = 7
+switch = false
+
+[default_session]
+command = "env MINE_GREETER_DRYRUN=1 /etc/greetd/mine-greeter/run-greeter.sh"
+user = "greeter"

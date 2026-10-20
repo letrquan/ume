@@ -1,0 +1,9 @@
+# greetd: the login screen (written by greeter-switch.sh).
+# Back to GDM: sudo bash ~/greeter-revert.sh (from a text console:
+# Ctrl+Alt+F3, log in) and reboot.
+[terminal]
+vt = 1
+
+[default_session]
+command = "/etc/greetd/mine-greeter/run-greeter.sh"
+user = "greeter"

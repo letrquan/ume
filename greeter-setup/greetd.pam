@@ -1,0 +1,14 @@
+#%PAM-1.0
+# greetd (the login screen in /etc/greetd/mine-greeter). Arch's greetd PAM
+# plus the gnome-keyring lines GDM has (/usr/lib/pam.d/gdm-password), so
+# your keyring (saved passwords, Wi-Fi) unlocks when you log in.
+# Written by greeter-install.sh; the package's own is greetd.mine-backup.
+auth       required     pam_securetty.so
+auth       requisite    pam_nologin.so
+auth       include      system-local-login
+auth       optional     pam_gnome_keyring.so
+account    include      system-local-login
+password   include      system-local-login
+password   optional     pam_gnome_keyring.so use_authtok
+session    include      system-local-login
+session    optional     pam_gnome_keyring.so auto_start

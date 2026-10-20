@@ -1,0 +1,474 @@
+#!/usr/bin/env bash
+# My own shell (~/.config/quickshell/mine) next to Noctalia, on mango.
+#
+#   mine on         use my shell now and at every login: start it and turn
+#                   off the Noctalia parts it replaces
+#   mine off        back to Noctalia for those parts, now and at login
+#   mine start      start my shell, kept running: scripts/shell-keeper.sh
+#                   starts it again after a crash (mango runs this at login,
+#                   ~/.config/mango/shell-mine.conf)
+#   mine stop       stop it (the keeper first, so it stays stopped)
+#   mine status
+#   mine restart    restart my shell (after it hung, a reload that failed, or
+#                   the keeper gave up)
+#   mine autostart  run by mango at login (~/.config/mango/shell-noctalia.conf);
+#                   starts my shell only when it is "on"
+#   mine launcher   Super (tap): my launcher, or Noctalia's when my shell
+#                   isn't running
+#   mine control-center   Super+N: same idea for the control center
+#   mine session    Super+X: same idea for the power menu
+#   mine wallpaper  Super+Y: same idea for the wallpaper picker
+#   mine clipboard  Super+V: same idea for the clipboard history
+#   mine screenshot region|window|screen|text   Print, Super+Shift+S / Ctrl+Print / Super+Shift+T (copy text)
+#   mine record screen|region|stop   Super+Shift+R / Super+Alt+R: record the
+#                   screen (or a region); either key stops a recording
+#   mine picker     Super+Shift+C: pick a color anywhere (hex copied)
+#   mine cheatsheet Super+/ : every keyboard shortcut, searchable
+#   mine overview   Super+O, 4 fingers up, the hot corner: every window, live
+#   mine osk toggle|open|close|fold|unfold|tablet   the on-screen keyboard
+#                   (mango runs `mine osk fold` / `unfold` when a switch flips)
+#   mine rotate lock|unlock|toggle|status   hold the screen's turn (tablet)
+#   mine key <action>   the media keys (volume, mic, brightness, play...)
+#   mine settings   Super+, : my shell's Settings window, or Noctalia's
+#   mine switcher next|previous   Alt+Tab / Alt+Shift+Tab: my window
+#                   switcher, or mango's overview when my shell isn't running
+#
+# Noctalia parts my shell replaces so far: the bar, the dock, the volume,
+# mic and brightness popups (its other popups, like caps lock or Wi-Fi,
+# stay), the notification daemon and the polkit agent (only one program
+# can do each of those), the wallpaper, and the colors it wrote for the lock
+# screen and mango's borders (my shell writes them now, with matugen), its
+# lock screen (my shell locks before sleep, services/Locker.qml), and its
+# clipboard keeper once wl-clip-persist is installed, all its popups (OSD)
+# and its rounded screen corners.
+# They are switched off in ~/.config/noctalia/config.toml: a line each in
+# [bar.default], [dock], [shell], [wallpaper] and two templates, and one
+# block at the end, all marked "managed by mine".
+set -euo pipefail
+
+flag="${XDG_STATE_HOME:-$HOME/.local/state}/mine-shell/on"
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/noctalia/config.toml"
+# The Quickshell config (tests: another one) and its keeper.
+shell_config="${MINE_CONFIG:-mine}"
+keeper="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/$shell_config/scripts/shell-keeper.sh"
+keeper_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/$shell_config-keeper"
+
+# Not grep -q: it may stop reading before qs list has written its second
+# line, and with pipefail the SIGPIPE qs list then dies of reads as
+# "running" (about 1 call in 200: then start did nothing).
+running() {
+    ! qs list -c "$shell_config" 2>&1 | grep 'No running instances' >/dev/null
+}
+
+# qs uses jemalloc, not glibc malloc (so MALLOC_ARENA_MAX does nothing).
+# MALLOC_CONF: 2 arenas instead of 32 (8 CPUs x 4), a background thread
+# that gives freed memory back while the shell is idle, and give it back
+# after 1 s instead of 10 s. Overview open/close test: 127 -> 51 MB.
+malloc_conf="background_thread:true,narenas:2,dirty_decay_ms:1000"
+# Through its keeper (scripts/shell-keeper.sh), which runs qs and starts it
+# again after a crash. setsid -f: on its own, so it outlives the terminal
+# or script that called this.
+start() {
+    running && return 0
+    # It's starting the shell already (or waiting to, after a crash).
+    [ -n "$(keeper_pid)" ] && return 0
+    if [ ! -f "$keeper" ]; then
+        # A shell tree from before the keeper.
+        MALLOC_CONF="$malloc_conf" qs -c "$shell_config" -n -d >/dev/null 2>&1
+        return
+    fi
+    MALLOC_CONF="$malloc_conf" setsid -f bash "$keeper" </dev/null >/dev/null 2>&1
+    # Until it's there, so a stop right after finds it.
+    for _ in $(seq 20); do
+        [ -n "$(keeper_pid)" ] && break
+        sleep 0.1
+    done
+}
+
+# The keeper's pid, while it runs.
+keeper_pid() {
+    local pid
+    pid=$(cat "$keeper_dir/pid" 2>/dev/null) || return 0
+    if grep -qs shell-keeper "/proc/$pid/cmdline"; then
+        echo "$pid"
+    fi
+}
+
+# The shell the keeper started last, while it runs.
+keeper_shell() {
+    local pid
+    pid=$(cat "$keeper_dir/shell" 2>/dev/null) || return 0
+    if [ "$(tr '\0' ' ' 2>/dev/null <"/proc/$pid/cmdline")" = "qs -c $shell_config -n " ]; then
+        echo "$pid"
+    fi
+}
+
+# End the keeper and wait until it's gone, so nothing starts the shell again
+# while it's being stopped (or while deploy.sh copies files).
+keeper_stop() {
+    local pid
+    pid=$(keeper_pid)
+    [ -n "$pid" ] || return 0
+    kill "$pid" 2>/dev/null || true
+    for _ in $(seq 30); do
+        [ -n "$(keeper_pid)" ] || return 0
+        sleep 0.1
+    done
+    kill -9 "$pid" 2>/dev/null || true
+}
+
+# Which program receives notifications right now ("noctalia", "qs" or "").
+notifications_owner() {
+    busctl --user status org.freedesktop.Notifications 2>/dev/null | sed -n 's/^Comm=//p'
+}
+
+# wait_owner <want|not:name>: up to 5 s.
+wait_owner() {
+    for _ in $(seq 50); do
+        owner=$(notifications_owner)
+        case "$1" in
+            not:*) [ "$owner" != "${1#not:}" ] && return 0 ;;
+            *) [ "$owner" = "$1" ] && return 0 ;;
+        esac
+        sleep 0.1
+    done
+    return 1
+}
+
+# Stop it and wait until it's really gone (qs kill returns before it exits).
+# What the shell runs for itself; normally they end with it, but not when
+# it had to be killed (or crashed).
+# cleanup_children [session]: only in that session (the keeper, after a
+# crash: what its shell started, not another instance's).
+cleanup_children() {
+    local only=()
+    [ -n "${1:-}" ] && only=(-s "$1")
+    pkill "${only[@]}" -f "systemd-inhibit --what=sleep --mode=delay --who=mine shell" 2>/dev/null || true
+    pkill "${only[@]}" -f "gdbus monitor --system --dest org.freedesktop.login1" 2>/dev/null || true
+    pkill "${only[@]}" -f "wl-paste --type (text|image) --watch (cliphist store|sh .*/scripts/clip-store\.sh)" 2>/dev/null || true
+    pkill "${only[@]}" -f "wl-clip-persist --clipboard regular" 2>/dev/null || true
+    pkill "${only[@]}" -f "udevadm monitor --udev --subsystem-match=backlight" 2>/dev/null || true
+    pkill "${only[@]}" -f "^monitor-sensor --accel$" 2>/dev/null || true
+}
+
+# If it hangs while exiting (seen after a reload that failed), end it the
+# hard way.
+stop() {
+    keeper_stop
+    # One the keeper had only just started isn't listed yet: a moment for it
+    # to show up, then it's stopped like any other.
+    if [ -n "$(keeper_shell)" ]; then
+        for _ in $(seq 20); do
+            running && break
+            sleep 0.1
+        done
+    fi
+    if running; then
+        pid=$(qs list -c "$shell_config" 2>/dev/null | awk '/Process ID/{print $3}')
+        qs kill -c "$shell_config" >/dev/null 2>&1 || true
+        for _ in $(seq 30); do
+            running || break
+            sleep 0.1
+        done
+        if running && [ -n "$pid" ]; then
+            kill "$pid" 2>/dev/null || true
+            sleep 0.5
+            kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true
+            for _ in $(seq 20); do
+                running || break
+                sleep 0.1
+            done
+        fi
+    fi
+    cleanup_children
+}
+
+# noctalia_parts on|off: turn Noctalia's replaced parts back on (off = mine
+# is off) or off (on = mine is on).
+noctalia_parts() {
+    [ -f "$cfg" ] || return 0
+    [ -f "$cfg.before-mine-switch" ] || cp "$cfg" "$cfg.before-mine-switch"
+    cp "$cfg" "$cfg.mine-tmp"
+    clip=0
+    command -v wl-clip-persist >/dev/null && clip=1
+    python3 - "$cfg" "$1" "$clip" <<'EOF'
+import re, sys
+path, mode = sys.argv[1], sys.argv[2]
+clip_persist = len(sys.argv) > 3 and sys.argv[3] == "1"
+tag = "# managed by ~/.local/bin/mine"
+begin = "# >>> managed by ~/.local/bin/mine: Noctalia parts my shell replaces >>>"
+end = "# <<< managed by ~/.local/bin/mine <<<"
+# Keys inside Noctalia's own tables (a second table of the same name would be
+# invalid TOML). An existing line is changed in place and its old value kept
+# in the comment, so "off" puts back exactly what was there.
+overrides = [("[bar.default]", "enabled", "false"),
+             ("[dock]", "enabled", "false"),
+             ("[shell]", "polkit_agent", "false"),
+             ("[wallpaper]", "enabled", "false"),
+             ("[theme.templates.user.qs_lock_theme]", "enabled", "false"),
+             ("[theme.templates.user.mango_colors]", "enabled", "false"),
+             ("[lockscreen]", "enabled", "false"),
+             ("[shell.screen_corners]", "enabled", "false")]
+if clip_persist:
+    overrides.append(("[shell]", "clipboard_enabled", "false"))
+
+# Start clean: drop the managed block, undo managed lines.
+out, skip = [], False
+for line in open(path).read().split("\n"):
+    if line == begin:
+        skip = True
+        continue
+    if skip:
+        if line == end:
+            skip = False
+        continue
+    if tag in line:
+        was = re.search(r"\(was: (.*)\)$", line)
+        if was:
+            out.append(line.split("=")[0].strip() + " = " + was.group(1))
+        continue
+    out.append(line)
+while out and out[-1] == "":
+    out.pop()
+
+if mode == "on":
+    for table, key, value in overrides:
+        i = out.index(table)
+        j = i + 1
+        while j < len(out) and not out[j].startswith("["):
+            if re.match(r"\s*" + re.escape(key) + r"\s*=", out[j]):
+                old = out[j].split("=", 1)[1].split("#")[0].strip()
+                out[j] = f"{key} = {value}  {tag} (was: {old})"
+                break
+            j += 1
+        else:
+            out.insert(i + 1, f"{key} = {value}  {tag}")
+    out += ["", begin,
+            "[osd]",
+            "enabled = false",
+            "",
+            "[osd.kinds]",
+            "volume = false",
+            "volume_output = false",
+            "volume_input = false",
+            "brightness = false",
+            "",
+            "[notification]",
+            "enable_daemon = false",
+            end]
+open(path, "w").write("\n".join(out) + "\n")
+EOF
+    if ! noctalia config validate "$cfg" >/dev/null 2>&1; then
+        mv "$cfg.mine-tmp" "$cfg"
+        echo "mine: Noctalia rejected the change, config.toml left as it was" >&2
+        return 1
+    fi
+    rm -f "$cfg.mine-tmp"
+    if pgrep -x noctalia >/dev/null; then
+        noctalia msg config-reload >/dev/null 2>&1 || true
+    fi
+}
+
+# Which keys reached this script (to find keys that do nothing). Lives in
+# $XDG_RUNTIME_DIR, so it's gone after a reboot.
+keylog() {
+    echo "$(date +%T) $*" >>"${XDG_RUNTIME_DIR:-/tmp}/mine-keys.log"
+}
+
+case "${1:-status}" in
+    on)
+        mkdir -p "$(dirname "$flag")"
+        touch "$flag"
+        noctalia_parts on
+        # Noctalia lets go of notifications first, then a fresh start of my
+        # shell takes them (a running one wouldn't try again).
+        if ! wait_owner not:noctalia; then
+            echo "mine: Noctalia still holds notifications; restart Noctalia, then: mine restart" >&2
+        fi
+        stop
+        start
+        if wait_owner qs; then
+            echo "My shell is on (now and at every login), notifications included. Undo: mine off"
+        else
+            echo "My shell is on, but it didn't get notifications (owner: $(notifications_owner))" >&2
+        fi
+        ;;
+    off)
+        rm -f "$flag"
+        # My shell lets go of notifications first, then Noctalia takes them.
+        stop
+        noctalia_parts off
+        if pgrep -x noctalia >/dev/null; then
+            noctalia msg bar-show >/dev/null 2>&1 || true
+            wall=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["path"])' \
+                "${XDG_STATE_HOME:-$HOME/.local/state}/mine-shell/wallpaper.json" 2>/dev/null || true)
+            if [ -n "$wall" ] && [ -f "$wall" ]; then
+                noctalia msg wallpaper-set "$wall" >/dev/null 2>&1 || true
+            fi
+            noctalia msg templates-apply >/dev/null 2>&1 || true
+            if ! wait_owner noctalia; then
+                echo "mine: Noctalia didn't take notifications back (owner: $(notifications_owner)); restart Noctalia" >&2
+            fi
+        fi
+        echo "My shell is off; Noctalia's bar, popups and notifications are back."
+        ;;
+    start)
+        start
+        if [ -n "$(keeper_pid)" ]; then
+            echo "My shell is running (kept running by its keeper)."
+        elif running; then
+            echo "My shell is running, but without its keeper (started before it, or no scripts/shell-keeper.sh yet); mine restart puts it under one."
+        else
+            echo "mine: my shell didn't start: $(tail -n 1 "$keeper_dir/keeper.log" 2>/dev/null || true)" >&2
+            exit 1
+        fi
+        ;;
+    stop)
+        stop
+        echo "My shell is stopped (until: mine start)."
+        ;;
+    restart)
+        stop
+        start
+        echo "My shell restarted."
+        ;;
+    osk)
+        case "${2:-toggle}" in
+            toggle | open | close | tablet | fold | unfold) ;;
+            *) echo "usage: mine osk toggle | open | close | tablet | fold | unfold" >&2; exit 2 ;;
+        esac
+        # fold / unfold: mango, when a switch turns on / off (the tablet
+        # switches, or the lid). A fold with the lid shut is the lid. Each
+        # one is logged, with what the lid and hp-wmi said.
+        if [ "${2:-}" = fold ] || [ "${2:-}" = unfold ]; then
+            lid=$(cat /proc/acpi/button/lid/*/state 2>/dev/null | awk '{print $2; exit}')
+            tab=$(cat /sys/devices/platform/hp-wmi/tablet 2>/dev/null)
+            run_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
+            echo "$(date '+%F %T') $2 lid=${lid:-?} hp-wmi=${tab:-?}" >>"$run_dir/mine-osk.log"
+            [ "$2" = fold ] && [ "$lid" = closed ] && exit 0
+            # The last word, for a shell that starts (or restarts) folded:
+            # nothing else can tell (hp-wmi's file stays 0 on this laptop).
+            if [ "$2" = fold ]; then echo 1; else echo 0; fi >"$run_dir/mine-tablet"
+        fi
+        timeout 1 qs -c mine ipc call osk "${2:-toggle}" >/dev/null 2>&1
+        ;;
+    rotate)
+        case "${2:-toggle}" in
+            lock | unlock | toggle | status) ;;
+            *) echo "usage: mine rotate lock | unlock | toggle | status" >&2; exit 2 ;;
+        esac
+        timeout 1 qs -c mine ipc call rotate "${2:-toggle}"
+        ;;
+    cleanup)
+        # The keeper, after a crash: what the crashed shell left running in
+        # its session.
+        cleanup_children "${2:?usage: mine cleanup <session id>}"
+        ;;
+    autostart)
+        if [ -f "$flag" ]; then start; fi
+        ;;
+    launcher)
+        # timeout: a hung shell must not pile up stuck calls on every Super.
+        timeout 1 qs -c mine ipc call launcher toggle >/dev/null 2>&1 \
+            || noctalia msg panel-toggle launcher
+        ;;
+    control-center)
+        timeout 1 qs -c mine ipc call control toggle main >/dev/null 2>&1 \
+            || noctalia msg panel-toggle control-center
+        ;;
+    session)
+        timeout 1 qs -c mine ipc call session toggle >/dev/null 2>&1 \
+            || noctalia msg panel-toggle session
+        ;;
+    wallpaper)
+        timeout 1 qs -c mine ipc call wallpaper toggle >/dev/null 2>&1 \
+            || noctalia msg panel-toggle wallpaper
+        ;;
+    clipboard)
+        timeout 1 qs -c mine ipc call clipboard toggle >/dev/null 2>&1 \
+            || noctalia msg panel-toggle clipboard
+        ;;
+    settings)
+        timeout 1 qs -c mine ipc call control settings >/dev/null 2>&1 \
+            || noctalia msg settings-toggle
+        ;;
+    switcher)
+        # Alt+Tab / Alt+Shift+Tab: my window switcher, or mango's overview.
+        case "${2:-next}" in
+            next | previous) ;;
+            *) echo "usage: mine switcher next | previous" >&2; exit 2 ;;
+        esac
+        if timeout 1 qs -c mine ipc call switcher "${2:-next}" >/dev/null 2>&1; then
+            keylog "switcher ${2:-next} -> my shell"
+        else
+            keylog "switcher ${2:-next} -> my shell failed, mango overview"
+            mmsg dispatch toggleoverview
+        fi
+        ;;
+    key)
+        # Media keys: mine key volume-up | volume-down | volume-mute | mic-mute
+        #   | brightness-up | brightness-down | play | next | previous
+        case "${2:-}" in
+            volume-up) fn=volumeUp; fallback="volume-up 3" ;;
+            volume-down) fn=volumeDown; fallback="volume-down 3" ;;
+            volume-mute) fn=volumeMute; fallback="volume-mute" ;;
+            mic-mute) fn=micMute; fallback="mic-mute" ;;
+            brightness-up) fn=brightnessUp; fallback="brightness-up" ;;
+            brightness-down) fn=brightnessDown; fallback="brightness-down" ;;
+            play) fn=playPause; fallback="media toggle" ;;
+            next) fn=next; fallback="media next" ;;
+            previous) fn=previous; fallback="media previous" ;;
+            *) echo "usage: mine key volume-up|volume-down|volume-mute|mic-mute|brightness-up|brightness-down|play|next|previous" >&2; exit 2 ;;
+        esac
+        if timeout 1 qs -c mine ipc call keys "$fn" >/dev/null 2>&1; then
+            keylog "key $2 -> my shell"
+        else
+            keylog "key $2 -> my shell failed, Noctalia"
+            # shellcheck disable=SC2086
+            noctalia msg $fallback
+        fi
+        ;;
+    screenshot)
+        what="${2:-region}"             # region | window | screen | text
+        case "$what" in
+            region | window) fallback=screenshot-region ;;
+            screen) fallback=screenshot-fullscreen ;;
+            text) fallback="" ;;        # copy the text in a region (OCR); only my shell
+            *) echo "usage: mine screenshot region | window | screen | text" >&2; exit 2 ;;
+        esac
+        timeout 1 qs -c mine ipc call screenshot "$what" >/dev/null 2>&1 \
+            || { [ -n "$fallback" ] && noctalia msg "$fallback"; }
+        ;;
+    record)
+        what="${2:-screen}"             # screen | region | stop | toggle
+        case "$what" in
+            screen | region | stop | toggle) ;;
+            *) echo "usage: mine record screen | region | stop" >&2; exit 2 ;;
+        esac
+        # Without my shell: at least a stop that finishes the file.
+        timeout 1 qs -c mine ipc call record "$what" >/dev/null 2>&1 \
+            || { [ "$what" = stop ] && pkill -INT -x wf-recorder; }
+        ;;
+    picker)
+        timeout 1 qs -c mine ipc call picker pick >/dev/null 2>&1 \
+            || hyprpicker --autocopy --format=hex
+        ;;
+    overview)
+        timeout 1 qs -c mine ipc call overview toggle >/dev/null 2>&1 \
+            || mmsg dispatch toggleoverview
+        ;;
+    cheatsheet)
+        timeout 1 qs -c mine ipc call cheatsheet toggle >/dev/null 2>&1
+        ;;
+    status)
+        state=off; [ -f "$flag" ] && state=on
+        run=no; running && run=yes
+        echo "mine: $state (running: $run, notifications: $(notifications_owner || true))"
+        keep=off; [ -n "$(keeper_pid)" ] && keep="on, pid $(keeper_pid)"
+        echo "keeper: $keep; last: $(tail -n 1 "$keeper_dir/keeper.log" 2>/dev/null || true)"
+        ;;
+    *)
+        echo "usage: mine on | off | start | stop | status | restart | launcher | control-center | session | wallpaper | clipboard | screenshot | key | settings | switcher | record | picker | cheatsheet | overview | osk | rotate" >&2
+        exit 2
+        ;;
+esac

@@ -1,0 +1,7 @@
+# Runtime state lives outside the tree (~/.local/state/mine-shell), but just in case:
+settings.json
+*.bak*
+*.before-*
+*.orig
+*~
+__pycache__/

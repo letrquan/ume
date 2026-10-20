@@ -1,0 +1,197 @@
+# The prompt in the wallpaper's colors: written by the mine shell
+# (services/Wallpaper.qml, from matugen/starship.toml.in) each time the
+# wallpaper changes, so don't edit this copy. fish uses it while it exists
+# (~/.config/fish/conf.d/mine-starship.fish); your own prompt is still
+# ~/.config/starship.toml. Same layout as that one (catppuccin powerline):
+# the pills go from the accent to the wallpaper's darker shades.
+"$schema" = 'https://starship.rs/config-schema.json'
+
+format = """
+[](accent)\
+$os\
+$username\
+[](bg:pill2 fg:accent)\
+$directory\
+[](bg:pill3 fg:pill2)\
+$git_branch\
+$git_status\
+[](fg:pill3 bg:pill4)\
+$c\
+$rust\
+$golang\
+$nodejs\
+$bun\
+$php\
+$java\
+$kotlin\
+$haskell\
+$python\
+$conda\
+[](fg:pill4 bg:pill5)\
+$time\
+[ ](fg:pill5)\
+$cmd_duration\
+$line_break\
+$character"""
+
+palette = 'mine'
+
+[palettes.mine]
+accent = "{{colors.primary.default.hex}}"
+on_accent = "{{colors.on_primary.default.hex}}"
+pill2 = "{{colors.primary_container.default.hex}}"
+on_pill2 = "{{colors.on_primary_container.default.hex}}"
+pill3 = "{{colors.secondary_container.default.hex}}"
+on_pill3 = "{{colors.on_secondary_container.default.hex}}"
+pill4 = "{{colors.tertiary_container.default.hex}}"
+on_pill4 = "{{colors.on_tertiary_container.default.hex}}"
+pill5 = "{{colors.surface_container_highest.default.hex}}"
+on_pill5 = "{{colors.on_surface_variant.default.hex}}"
+dim = "{{colors.outline.default.hex}}"
+ok = "{{colors.primary.default.hex}}"
+bad = "{{colors.error.default.hex}}"
+mode = "{{colors.tertiary.default.hex}}"
+visual = "{{colors.term_yellow.default.hex}}"
+
+[os]
+disabled = false
+style = "bg:accent fg:on_accent"
+format = "[$symbol ]($style)"
+
+[os.symbols]
+Windows = ""
+Ubuntu = "󰕈"
+SUSE = ""
+Raspbian = "󰐿"
+Mint = "󰣭"
+Macos = "󰀵"
+Manjaro = ""
+Linux = "󰌽"
+Gentoo = "󰣨"
+Fedora = "󰣛"
+Alpine = ""
+Amazon = ""
+Android = ""
+AOSC = ""
+Arch = "󰣇"
+Artix = "󰣇"
+CachyOS = "󰣇"
+CentOS = ""
+Debian = "󰣚"
+Redhat = "󱄛"
+RedHatEnterprise = "󱄛"
+
+[username]
+show_always = true
+style_user = "bg:accent fg:on_accent"
+style_root = "bg:accent fg:on_accent"
+format = '[ $user]($style)'
+
+[directory]
+style = "bg:pill2 fg:on_pill2"
+format = "[ $path ]($style)"
+truncation_length = 3
+truncation_symbol = "…/"
+
+[directory.substitutions]
+"Documents" = "󰈙 "
+"Downloads" = " "
+"Music" = "󰝚 "
+"Pictures" = " "
+"Developer" = "󰲋 "
+
+[git_branch]
+symbol = ""
+style = "bg:pill3"
+format = '[[ $symbol $branch ](fg:on_pill3 bg:pill3)]($style)'
+
+[git_status]
+style = "bg:pill3"
+format = '[[($all_status$ahead_behind )](fg:on_pill3 bg:pill3)]($style)'
+
+[nodejs]
+symbol = ""
+style = "bg:pill4"
+format = '[[ $symbol( $version) ](fg:on_pill4 bg:pill4)]($style)'
+
+[bun]
+symbol = ""
+style = "bg:pill4"
+format = '[[ $symbol( $version) ](fg:on_pill4 bg:pill4)]($style)'
+
+[c]
+symbol = " "
+style = "bg:pill4"
+format = '[[ $symbol( $version) ](fg:on_pill4 bg:pill4)]($style)'
+
+[rust]
+symbol = ""
+style = "bg:pill4"
+format = '[[ $symbol( $version) ](fg:on_pill4 bg:pill4)]($style)'
+
+[golang]
+symbol = ""
+style = "bg:pill4"
+format = '[[ $symbol( $version) ](fg:on_pill4 bg:pill4)]($style)'
+
+[php]
+symbol = ""
+style = "bg:pill4"
+format = '[[ $symbol( $version) ](fg:on_pill4 bg:pill4)]($style)'
+
+[java]
+symbol = " "
+style = "bg:pill4"
+format = '[[ $symbol( $version) ](fg:on_pill4 bg:pill4)]($style)'
+
+[kotlin]
+symbol = ""
+style = "bg:pill4"
+format = '[[ $symbol( $version) ](fg:on_pill4 bg:pill4)]($style)'
+
+[haskell]
+symbol = ""
+style = "bg:pill4"
+format = '[[ $symbol( $version) ](fg:on_pill4 bg:pill4)]($style)'
+
+[python]
+symbol = ""
+style = "bg:pill4"
+format = '[[ $symbol( $version)(\(#$virtualenv\)) ](fg:on_pill4 bg:pill4)]($style)'
+
+[docker_context]
+symbol = ""
+style = "bg:pill4"
+format = '[[ $symbol( $context) ](fg:on_pill4 bg:pill4)]($style)'
+
+[conda]
+symbol = "  "
+style = "fg:on_pill4 bg:pill4"
+format = '[$symbol$environment ]($style)'
+ignore_base = false
+
+[time]
+disabled = false
+time_format = "%R"
+style = "bg:pill5"
+format = '[[  $time ](fg:on_pill5 bg:pill5)]($style)'
+
+[line_break]
+disabled = true
+
+[character]
+disabled = false
+success_symbol = '[❯](bold fg:ok)'
+error_symbol = '[❯](bold fg:bad)'
+vimcmd_symbol = '[❮](bold fg:ok)'
+vimcmd_replace_one_symbol = '[❮](bold fg:mode)'
+vimcmd_replace_symbol = '[❮](bold fg:mode)'
+vimcmd_visual_symbol = '[❮](bold fg:visual)'
+
+[cmd_duration]
+show_milliseconds = true
+format = "[ in $duration ]($style)"
+style = "fg:dim"
+disabled = false
+show_notifications = true
+min_time_to_notify = 45000

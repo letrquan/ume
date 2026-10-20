@@ -1,0 +1,7 @@
+# matugen is only run with --dry-run -j hex (colors as JSON on stdout);
+# services/Wallpaper.qml renders the files itself. No templates here on
+# purpose: matugen must never write anywhere (~/.config/matugen is end-4's).
+[config]
+version_check = false
+
+[templates]
