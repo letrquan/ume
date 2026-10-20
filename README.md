@@ -8,6 +8,46 @@ wallpaper, and every piece of the desktop in one shell.
 > taste, so expect to read and change some code before it fits yours. Inside the code it's
 > still called **mine** (`qs -c mine`, `~/.config/quickshell/mine`).
 
+![The desktop with the control center open](docs/screenshot.jpg)
+
+## Tour
+
+Every clip below is the real shell, recorded in a headless session with made-up data
+(notifications, music, calendar, clipboard). That session had no network or Bluetooth, so those
+show as off. The whole walkthrough as one video (2 min, MP4):
+[walkthrough.mp4](https://github.com/letrquan/ume/releases/download/walkthrough/walkthrough.mp4).
+
+<table>
+<tr>
+<td width="50%"><img src="docs/desktop.webp" alt="The desktop"><br><b>Desktop</b>: three glass islands, the dock, a desktop clock with the weather and music. Hover a stat for more; plugging in the charger grows a live activity out of the middle island.</td>
+<td width="50%"><img src="docs/notifications.webp" alt="Notifications"><br><b>Notifications</b> grow out of the middle island. The list, grouped by app, sits behind the bell.</td>
+</tr>
+<tr>
+<td><img src="docs/launcher.webp" alt="Launcher"><br><b>Launcher</b> (tap Super): apps, settings, math and emoji (<code>:</code>) in one field.</td>
+<td><img src="docs/control-center.webp" alt="Control center"><br><b>Control center</b> (Super+N): toggles, volume, the player and the battery.</td>
+</tr>
+<tr>
+<td><img src="docs/now-playing.webp" alt="Now Playing"><br><b>Now Playing</b>: click the music in the bar. The accent colors follow the album art.</td>
+<td><img src="docs/calendar.webp" alt="Calendar and weather"><br><b>Calendar</b> (click the clock): your <code>.ics</code> events and the next hours of weather.</td>
+</tr>
+<tr>
+<td><img src="docs/overview.webp" alt="Overview"><br><b>Overview</b> (Super+O, the hot corner, 4 fingers): every workspace with live windows. Type to find one, drag to move it.</td>
+<td><img src="docs/alt-tab.webp" alt="Alt+Tab"><br><b>Alt+Tab</b>: hold Alt, tap Tab, let go to switch.</td>
+</tr>
+<tr>
+<td><img src="docs/wallpaper.webp" alt="Wallpaper picker"><br><b>Wallpaper</b> (Super+Y): the new one spreads from where you clicked, and every color follows it (matugen).</td>
+<td><img src="docs/osd-power.webp" alt="Volume popup and power menu"><br><b>Volume popup</b> and the <b>power menu</b> (Super+X).</td>
+</tr>
+<tr>
+<td><img src="docs/cheat-sheet.webp" alt="Shortcut cheat sheet"><br><b>Cheat sheet</b> (Super+/): every shortcut, read from mango's config.</td>
+<td><img src="docs/settings.webp" alt="Settings"><br><b>Settings</b> (Super+,): every knob of the shell, searchable.</td>
+</tr>
+<tr>
+<td><img src="docs/clipboard.webp" alt="Clipboard history"><br><b>Clipboard history</b> (Super+V). API keys, tokens and one-time codes are left out, and so is whatever a password manager marks secret.</td>
+<td><img src="docs/lock.webp" alt="Lock screen"><br><b>Lock screen</b>: face unlock (optional), a wrong password shakes, and "while you were away" lists what came in.</td>
+</tr>
+</table>
+
 ## What's in it
 
 - **Bar**: three glass islands (left, clock, right) whose items you can rearrange, a live-activity
@@ -121,6 +161,10 @@ qsb --glsl "100 es,120,150,300 es,330" --hlsl 50 --msl 12 \
   [Caelestia](https://github.com/caelestia-dots/shell)'s lock
 - Motion curves follow [end-4's dots](https://github.com/end-4/dots-hyprland) and Material 3 Expressive
 - Emoji names come from GTK 4's emoji data (Unicode CLDR)
+- Wallpapers in the screenshots and clips: Unsplash photos that ship with Zorin OS (Canyon by
+  Ashim D'Silva, Waves by Angus Gray and the rest of the picker), the Tarantula Nebula (NASA, ESA,
+  CSA, STScI; public domain), M83 (NASA, ESA and the Hubble Heritage Team; public domain) and a beech
+  forest (W.carter, CC0)
 
 ## License
 

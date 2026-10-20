@@ -5,3 +5,6 @@ settings.json
 *.orig
 *~
 __pycache__/
+
+# The walkthrough video is a release asset, not in git
+docs/*.mp4
