@@ -13,8 +13,8 @@ wallpaper, and every piece of the desktop in one shell.
 ## Tour
 
 Every clip below is the real shell, recorded in a headless session with made-up data
-(notifications, music, calendar, clipboard). That session had no network or Bluetooth, so those
-show as off. The whole walkthrough as one video (2 min, 1920×1200 MP4, 37 MB):
+(notifications, music, lyrics, calendar, clipboard, updates, devices). That session had no network
+or Bluetooth, so those show as off. The whole walkthrough as one video (2 min, 1920×1200 MP4, 37 MB):
 [walkthrough.mp4](https://github.com/letrquan/ume/releases/download/walkthrough/walkthrough.mp4).
 
 <table>
@@ -45,6 +45,22 @@ show as off. The whole walkthrough as one video (2 min, 1920×1200 MP4, 37 MB):
 <tr>
 <td><img src="docs/clipboard.webp" alt="Clipboard history"><br><b>Clipboard history</b> (Super+V). API keys, tokens and one-time codes are left out, and so is whatever a password manager marks secret.</td>
 <td><img src="docs/lock.webp" alt="Lock screen"><br><b>Lock screen</b>: face unlock (optional), a wrong password shakes, and "while you were away" lists what came in.</td>
+</tr>
+<tr>
+<td><img src="docs/updates.webp" alt="Updates panel"><br><b>Updates</b> (click the updates icon): what waits in the repos, the AUR and Flatpak, Arch news since your last upgrade, and a heads-up for packages worth a look first. Update installs with live progress and says what needs a restart.</td>
+<td><img src="docs/control-pages.webp" alt="Hotspot and Tailscale pages"><br><b>Hotspot</b> and <b>Tailscale</b> in the control center: turn the hotspot on and share it with a QR code; see your tailnet's devices and its exit nodes.</td>
+</tr>
+<tr>
+<td><img src="docs/tiles-song.webp" alt="Name that song and the tile editor"><br><b>Name that song</b> listens to what's playing and names it (songrec). <b>Edit</b> picks and orders the control center's tiles.</td>
+<td><img src="docs/usb-battery.webp" alt="USB drives and battery popups"><br><b>USB drives</b>: a notification, then a bar item with free space, Open and Eject. The <b>battery</b> popup graphs the last 24 hours and shows the battery's health.</td>
+</tr>
+<tr>
+<td><img src="docs/lyrics.webp" alt="Lyrics"><br><b>Lyrics</b> (lrclib.net) follow the song in the bar, in Now Playing and on the desktop music card.</td>
+<td><img src="docs/markup.webp" alt="Screenshot markup"><br><b>Screenshot markup</b> (Print, then E): box, arrow, text, blur and pen right on the frozen screen, then save or copy.</td>
+</tr>
+<tr>
+<td><img src="docs/translate.webp" alt="Translate a region"><br><b>Translate</b> (Super+Shift+D): pick text on the screen; it's read (tesseract) and translated, English ⇄ Vietnamese by default.</td>
+<td><img src="docs/qr.webp" alt="QR scan"><br><b>QR scan</b> (Super+Shift+Q): pick a code on the screen; a link can be opened or copied from the notification.</td>
 </tr>
 </table>
 
