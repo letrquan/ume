@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell.Widgets
 import qs.common
 
 // The wallpaper. A new one spreads out from `origin` in a growing circle
@@ -18,7 +17,8 @@ Item {
     property string shown: ""
     // The first picture (at start, and after every shell reload) is read
     // right away instead of in the background, so there is never an empty
-    // black frame; later ones load in the background during the reveal.
+    // black frame (unless the intro fades it in: then in the background
+    // too); later ones load in the background during the reveal.
     property bool settled: false
     // The first picture fades in (Intro: the way in after login); later
     // ones use the circle.
@@ -63,10 +63,18 @@ Item {
     Image {
         id: base
         anchors.fill: parent
-        source: root.shown !== "" ? "file://" + root.shown : ""
+        // Only once mango has sized the window: before that it's 100 x 100,
+        // then 0 x 0 (this view stays 0 x 0 meanwhile), and a picture asked
+        // for then is decoded at the wrong size (at 0 x 0: the full 3840 x
+        // 2880, ~200 ms on the main thread) and thrown away.
+        readonly property bool sized: root.width > 0 && root.height > 0
+            && root.decodeSize.width > 0 && root.decodeSize.height > 0
+        source: root.shown !== "" && sized ? "file://" + root.shown : ""
         sourceSize: root.decodeSize
         fillMode: Image.PreserveAspectCrop
-        asynchronous: root.settled
+        // The intro fades the first one in from the window's color anyway,
+        // so it can load in the background like the later ones.
+        asynchronous: root.settled || Intro.enabled
         cache: false
         smooth: true
         opacity: root.entry
@@ -82,40 +90,39 @@ Item {
         }
     }
 
-    // The new picture, seen through the growing circle.
-    ClippingRectangle {
-        id: lens
+    // The new picture, seen through the growing circle: drawn straight
+    // from its texture, cut to the circle in a shader (RoundedTexture). A
+    // ClippingRectangle here made two offscreen copies of the circle and
+    // made them again at the new size on every frame, up to twice the
+    // screen's size across (~100 MB of GPU memory near the end).
+    Image {
+        id: incoming
+        anchors.fill: parent
+        sourceSize: root.decodeSize
+        fillMode: Image.PreserveAspectCrop
+        asynchronous: true
+        cache: false
+        smooth: true
         visible: false
-        x: root.ox - root.radius
-        y: root.oy - root.radius
-        width: root.radius * 2
-        height: root.radius * 2
-        radius: root.radius
-        color: "transparent"
 
-        Image {
-            id: incoming
-            x: -lens.x
-            y: -lens.y
-            width: root.width
-            height: root.height
-            sourceSize: root.decodeSize
-            fillMode: Image.PreserveAspectCrop
-            asynchronous: true
-            cache: false
-            smooth: true
-
-            onStatusChanged: if (status === Image.Ready && root.radius === 0 && source !== "") reveal.restart()
-        }
+        onStatusChanged: if (status === Image.Ready && root.radius === 0 && source !== "") reveal.restart()
+    }
+    RoundedTexture {
+        id: lens
+        anchors.fill: parent
+        visible: false
+        source: incoming
+        clipRect: Qt.rect(root.ox - root.radius, root.oy - root.radius, root.radius * 2, root.radius * 2)
+        clipRadius: root.radius
     }
 
     // Rim of light at the circle's edge, fading out as it reaches the corners.
     Rectangle {
         visible: lens.visible
-        x: lens.x
-        y: lens.y
-        width: lens.width
-        height: lens.height
+        x: root.ox - root.radius
+        y: root.oy - root.radius
+        width: root.radius * 2
+        height: root.radius * 2
         radius: root.radius
         color: "transparent"
         border.width: 2

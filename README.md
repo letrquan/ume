@@ -51,21 +51,28 @@ show as off. The whole walkthrough as one video (2 min, 1920×1200 MP4, 37 MB):
 ## What's in it
 
 - **Bar**: three glass islands (left, clock, right) whose items you can rearrange, a live-activity
-  segment in the middle island, and a system tray
+  segment in the middle island, a system tray, and items for updates, USB drives and Tailscale
 - **Notifications** that grow out of the middle island, with a history list behind the bell
 - **Launcher** (tap Super) with an app, emoji, calculator and settings search, and a **clipboard history** (Super+V)
-- **Control center** (Super+N) for Wi-Fi, Bluetooth, audio, night light, phone (KDE Connect) and media
+- **Control center** (Super+N) for Wi-Fi (share a network as a QR code), Bluetooth, audio, a hotspot,
+  Tailscale, airplane mode, night light, phone (KDE Connect), name that song (songrec), battery health
+  and media. Pick and order its tiles in Settings
 - **Dock**, **overview** (Super+O / hot corner) with live window pictures and drag between workspaces,
   and an **Alt+Tab** switcher
 - **OSD** for volume, brightness, mic, caps lock and num lock
 - **Wallpaper picker** (Super+Y) with [matugen](https://github.com/InioX/matugen) colors pushed to
   GTK, foot, starship and mango's borders
-- **Screenshots** (freeze, then pick a region or window), **screen recording**, **OCR** (Super+Shift+T)
-  and a **color picker**
+- **Screenshots** (freeze, then pick a region or window) with **markup** right in the overlay (pen,
+  arrow, box, text, blur), **screen recording**, **OCR** (Super+Shift+T), **QR scan** (Super+Shift+Q),
+  **Google Lens** (Super+Shift+G), **translate** a region (Super+Shift+D) and a **color picker**
 - **Calendar** with weather (Open-Meteo) and `.ics` events, a desktop clock, and a **Now Playing** card
-- **Power menu**, **polkit** password dialog, **lock screen** (`lock.qml`), and an optional
-  **greetd login screen** built from the same parts
-- **Idle**: dim, screen off and lock, with an optional presence sensor lock
+  with synced lyrics ([lrclib.net](https://lrclib.net)), also on the desktop music card
+- **Updates** panel (Arch): repo, AUR and Flatpak updates, Arch news, and a heads-up for packages
+  worth a look first (kernel, mesa, Qt, ...)
+- **Power menu** (with "Restart to Windows" on dual boot), **polkit** password dialog, **lock screen**
+  (`lock.qml`), and an optional **greetd login screen** built from the same parts
+- **Idle**: dim, screen off and lock, with an optional presence sensor lock, and optional auto
+  brightness from the light sensor
 - **Settings window** (Super+,) where every knob in `common/Style.qml` can be changed
 - **Tablet mode**: on-screen keyboard, auto-rotate
 - **Cheat sheet** of every shortcut (Super+/)
@@ -84,6 +91,7 @@ Developed on CachyOS with these versions:
 | Screenshots | `grim`, `slurp`, `swappy`, `tesseract` (OCR), `hyprpicker`, `wf-recorder`, `imagemagick` |
 | System | `brightnessctl`, `wlsunset`, `hypridle`, `iio-sensor-proxy`, `iproute2`, `jq`, `curl` |
 | Optional | `cava` (visualizer), `kdeconnect` (phone), `wtype` (on-screen keyboard), `hyprlock` (lock fallback), `howdy` (face unlock), `greetd` + `cage` (login screen) |
+| Optional, newer parts | `socat` (faster key binds; without it they go through `qs ipc`), `networkmanager` (hotspot, Wi-Fi QR), `qrencode` (Wi-Fi QR), `zbar` (QR scan), `songrec` (name that song), `tailscale`, `udisks2` (USB drives), `pacman-contrib` + `paru` + `flatpak` (updates), `efibootmgr` (restart to Windows), `tesseract-data-vie` (translate from Vietnamese) |
 
 The icon theme is set to `ZorinGrey-Dark` at the top of `shell.qml`, `lock.qml` and
 `lock-preview.qml`. Change it to one you have.
@@ -108,7 +116,11 @@ To try it without mango's keybinds, run `qs -c mine`.
 
 Your changes are saved in `~/.local/state/mine-shell/settings.json`. Any value missing there
 falls back to the default in `common/Style.qml`. Weather defaults to Ho Chi Minh City; change it
-in Settings → Calendar & weather.
+in Settings → Calendar & weather. Translate defaults to Vietnamese ⇄ English (`translatePair`).
+
+These parts talk to outside services: weather (Open-Meteo, city level), lyrics (lrclib.net, the
+song playing), translate (Google Translate over HTTPS, the text you pick), Google Lens (the picture
+you pick), name that song (songrec, a few seconds of audio) and Arch news (archlinux.org).
 
 ### Things that touch the system
 
@@ -119,6 +131,11 @@ has an undo script.
 - `setup/face-setup.sh`: Howdy face unlock for the lock screen only (`face-undo.sh`)
 - `setup/boot-setup.sh`: quiet boot (hidden GRUB menu, plymouth) (`boot-undo.sh`)
 - `scripts/tablet-keyboard.sh`: libinput quirk that keeps the keyboard working in tablet mode
+
+These run as root through `pkexec`, so the shell's own polkit dialog asks for your password each time:
+
+- the updates panel's Install (`scripts/update-run.sh`: `pacman -Syu`; Flatpaks run as you)
+- "Restart to Windows" (`efibootmgr -n`, the next boot only)
 
 ### Hardware notes
 

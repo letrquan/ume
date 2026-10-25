@@ -16,7 +16,11 @@ Singleton {
 
     property bool open: false
     property bool mapped: false
-    property string page: "main"        // main | wifi | bluetooth | audio | phone
+    property string page: "main"        // main | wifi | bluetooth | audio | phone | tailscale | hotspot
+    // The main page's tiles in edit mode (control/TileGrid.qml): ends on
+    // Done, Esc, another page, or when the control center has closed.
+    property bool editing: false
+    onPageChanged: if (page !== "main") editing = false
 
     readonly property bool dryRun: Quickshell.env("MINE_CC_DRYRUN") === "1"
 
@@ -61,6 +65,7 @@ Singleton {
         // for ~50 ms, which made that fade stutter.
         release.restart();
         page = "main";
+        editing = false;
     }
 
     Timer {
@@ -125,8 +130,23 @@ Singleton {
     }
 
     function setBluetooth(on) {
-        if (adapter)
-            act("bluetooth " + on, () => adapter.enabled = on);
+        if (!adapter)
+            return;
+        // Blocked by rfkill (airplane mode, or by hand): BlueZ can't power
+        // it until it's unblocked, then can a moment later.
+        if (on && adapter.state === BluetoothAdapterState.Blocked) {
+            act("bluetooth unblock", () => {
+                Quickshell.execDetached([Quickshell.env("MINE_RFKILL") || "rfkill", "unblock", "bluetooth"]);
+                btPowerOn.restart();
+            });
+            return;
+        }
+        act("bluetooth " + on, () => adapter.enabled = on);
+    }
+    Timer {
+        id: btPowerOn
+        interval: 1200
+        onTriggered: if (root.adapter && root.adapter.state !== BluetoothAdapterState.Blocked) root.adapter.enabled = true
     }
     function setDiscovering(on) {
         if (adapter && adapter.enabled)
@@ -179,6 +199,8 @@ Singleton {
     }
     // While dragging, brightnessctl runs at most every 60 ms.
     function setBrightness(value) {
+        // Yours: auto brightness stops gliding and learns it.
+        AutoBrightness.userSet();
         pendingBrightness = value;
         if (!brightnessTimer.running)
             brightnessTimer.start();

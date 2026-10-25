@@ -102,21 +102,40 @@ Item {
         printErrors: false
         atomicWrites: true
     }
+    // The shell's "Switch to GNOME" (scripts/switch-session.sh) leaves
+    // { session, at } here. It picks the session once: only while newer
+    // than the note the last login saw (noteAt in state.json), since this
+    // user can't delete it.
+    FileView {
+        id: noteFile
+        path: root.assetDir + "/next-session.json"
+        blockLoading: true
+        printErrors: false
+    }
+    property real noteAt: 0
     property bool picked: false
     function pickDefaults() {
         if (picked || users.length === 0 || sessions.length === 0)
             return;
         picked = true;
-        let saved = {};
+        let saved = {}, note = {};
         try {
             saved = JSON.parse(stateFile.text() || "{}");
         } catch (e) {}
+        try {
+            note = JSON.parse(noteFile.text() || "{}");
+        } catch (e) {}
         user = users.includes(saved.user) ? saved.user : users[0];
-        sessionId = sessions.some(s => s.id === saved.session) ? saved.session
+        noteAt = Number(saved.noteAt) || 0;
+        const fresh = Number(note.at) > noteAt && sessions.some(s => s.id === note.session);
+        if (fresh)
+            noteAt = Number(note.at);
+        sessionId = fresh ? note.session
+            : sessions.some(s => s.id === saved.session) ? saved.session
             : sessions.some(s => s.id === "mango") ? "mango" : sessions[0].id;
     }
     function remember() {
-        stateFile.setText(JSON.stringify({ user: user, session: sessionId }, null, 1) + "\n");
+        stateFile.setText(JSON.stringify({ user: user, session: sessionId, noteAt: noteAt }, null, 1) + "\n");
     }
 
     // ---- Logging in ---------------------------------------------------------------------

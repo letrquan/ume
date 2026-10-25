@@ -2,7 +2,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Services.Mpris
 import qs.common
 
 // The music visualizer's levels: cava listens to what the speakers play and
@@ -28,7 +27,7 @@ Singleton {
         users = Math.max(0, users + delta);
     }
 
-    readonly property bool playing: Mpris.players.values.some(p => p.isPlaying)
+    readonly property bool playing: Players.anyPlaying
     readonly property bool active: Style.showVisualizer && playing && users > 0
     readonly property int bars: Math.max(2, Math.min(24, Style.visualizerBars))
     readonly property int fps: Math.max(5, Math.min(60, Style.visualizerFps))

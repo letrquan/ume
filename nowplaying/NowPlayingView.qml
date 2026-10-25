@@ -13,12 +13,16 @@ import qs.services
 //      │ └──────┘  ▁▃▅▇▅▃                         │
 //      │ ━━━━━━━━━━━━●──────────────────────────  │
 //      │ 1:12                             -2:36   │
-//      │  ⧉        ⏮     ⏯     ⏭        🔈 ━━━    │
+//      │  ⧉ ♪      ⏮     ⏯     ⏭        🔈 ━━━    │
 //      │ [Spotify] [Brave]  (several players)     │
+//      │   the line before                        │
+//      │   The line being sung        (lyrics,    │
+//      │   the next line               Lyrics.qml)│
 //      ╰──────────────────────────────────────────╯
 //
 // Keys: Space plays/pauses, ←/→ seek (Style.nowPlayingSeekStep), ↑/↓
-// volume (when the player has its own), N/P next/previous, Esc closes.
+// volume (when the player has its own), N/P next/previous, Y lyrics on or
+// off, Esc closes.
 Item {
     id: root
 
@@ -36,7 +40,7 @@ Item {
 
     readonly property var player: NowPlayingState.player
     readonly property bool playing: player?.isPlaying ?? false
-    readonly property string artUrl: player?.trackArtUrl ?? ""
+    readonly property string artUrl: Players.art(player)
     readonly property real length: (player?.lengthSupported ?? false) ? (player?.length ?? 0) : 0
     readonly property bool canSeek: (player?.canSeek ?? false) && length > 0
 
@@ -124,6 +128,8 @@ Item {
             setVolume((p?.volume ?? 0) + Style.volumeStep);
         else if (k === Qt.Key_Down)
             setVolume((p?.volume ?? 0) - Style.volumeStep);
+        else if (k === Qt.Key_Y && Style.lyricsEnabled)
+            Settings.set("lyricsInCard", !Style.lyricsInCard);
         else if (k === Qt.Key_N || k === Qt.Key_MediaNext)
             p?.next();
         else if (k === Qt.Key_P || k === Qt.Key_MediaPrevious)
@@ -306,16 +312,32 @@ Item {
                 width: parent.width
                 height: 52
 
-                // The player's window.
-                Clickable {
+                Row {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    implicitHeight: 36
-                    onClicked: {
-                        NowPlayingState.raise(root.player);
-                        root.closeRequested();
+                    spacing: 2
+
+                    // The player's window.
+                    Clickable {
+                        implicitHeight: 36
+                        onClicked: {
+                            NowPlayingState.raise(root.player);
+                            root.closeRequested();
+                        }
+                        Icon { name: "open_in_new"; size: 20; color: Colors.textOnSurfaceVariant }
                     }
-                    Icon { name: "open_in_new"; size: 20; color: Colors.textOnSurfaceVariant }
+                    // Lyrics on or off (remembered).
+                    Clickable {
+                        implicitHeight: 36
+                        visible: Style.lyricsEnabled
+                        onClicked: Settings.set("lyricsInCard", !Style.lyricsInCard)
+                        Icon {
+                            name: "lyrics"
+                            size: 20
+                            fill: Style.lyricsInCard ? 1 : 0
+                            color: Style.lyricsInCard ? root.accent : Colors.textOnSurfaceVariant
+                        }
+                    }
                 }
 
                 Row {
@@ -443,6 +465,15 @@ Item {
                         }
                     }
                 }
+            }
+
+            // ---- Lyrics ---------------------------------------------------------------------
+            LyricsPanel {
+                width: parent.width
+                shown: Style.lyricsEnabled && Style.lyricsInCard
+                active: root.open && morph.revealed
+                accent: root.accent
+                onSeekRequested: seconds => root.seekTo(seconds)
             }
         }
     }

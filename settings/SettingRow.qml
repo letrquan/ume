@@ -9,7 +9,8 @@ import qs.services
 //   short description
 // The control changes the knob through Settings (it applies at once); ↺
 // appears when you changed it and puts the Style.qml default back.
-// Kind "baritems" is the whole width instead: the bar items editor.
+// Kind "baritems" is the whole width instead: the bar items editor; so is
+// "cctiles", the control center tiles editor (`shown`: true or false).
 Item {
     id: row
 
@@ -21,7 +22,7 @@ Item {
     readonly property bool overridden: resets.some(name => Settings.changed(name))
     // The value the shell uses right now (your change or the default).
     readonly property var current: knob ? Style[r.name] : undefined
-    readonly property bool wide: r.kind === "baritems"
+    readonly property bool wide: r.kind === "baritems" || r.kind === "cctiles"
 
     function change(v) {
         Settings.set(r.name, v);
@@ -33,9 +34,20 @@ Item {
         id: editor
         active: row.wide
         width: parent.width
-        sourceComponent: BarItemsEditor {
+        sourceComponent: row.r.kind === "cctiles" ? tilesEditor : barEditor
+    }
+    Component {
+        id: barEditor
+        BarItemsEditor {
             width: row.width
             key: row.r.key ?? ""
+        }
+    }
+    Component {
+        id: tilesEditor
+        ControlTilesEditor {
+            width: row.width
+            shown: row.r.shown !== false
         }
     }
 

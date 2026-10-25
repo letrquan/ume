@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell.Services.Mpris
 import Quickshell.Widgets
 import qs.common
 
@@ -8,10 +7,8 @@ import qs.common
 Item {
     id: root
 
-    readonly property var player: {
-        const list = Mpris.players.values;
-        return list.find(p => p.isPlaying) ?? list[0] ?? null;
-    }
+    // The player the whole shell shows (common/Players.qml).
+    readonly property var player: Players.active
     readonly property bool playing: player?.isPlaying ?? false
     readonly property real length: player?.length ?? 0
     readonly property real position: player?.position ?? 0
@@ -49,14 +46,14 @@ Item {
 
         Image {
             anchors.fill: parent
-            source: root.player?.trackArtUrl ?? ""
+            source: Players.art(root.player)
             sourceSize: Qt.size(112, 112)
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
         }
         Icon {
             anchors.centerIn: parent
-            visible: (root.player?.trackArtUrl ?? "") === ""
+            visible: Players.art(root.player) === ""
             name: "music_note"
             color: Colors.textOnSecondaryContainer
         }

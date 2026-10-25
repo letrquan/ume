@@ -5,7 +5,8 @@ import qs.services
 
 // Wi-Fi networks: the connected one first, then known ones, then by signal.
 // Click a network to connect (a password field opens for new secured ones),
-// click the connected one to disconnect.
+// click the connected one to disconnect. The connected one's Share shows
+// it as a QR code (control/WifiShare.qml) in place of the list.
 Column {
     id: root
 
@@ -13,6 +14,10 @@ Column {
 
     // Which network has its password field open ("" = none).
     property string asking: ""
+    // Showing the connected network's QR code (Share).
+    property bool sharing: false
+    onConnectedChanged: if (!connected) sharing = false
+    readonly property bool connected: ControlState.wifiNetwork !== null
     readonly property var networks: {
         const list = ControlState.wifiDevice?.networks.values ?? [];
         return list.filter(n => n.name !== "").sort((a, b) =>
@@ -33,15 +38,15 @@ Column {
 
     PageHeader {
         width: parent.width
-        title: "Wi-Fi"
-        hasSwitch: true
+        title: root.sharing ? "Share Wi-Fi" : "Wi-Fi"
+        hasSwitch: !root.sharing
         checked: Networking.wifiEnabled
         onFlipped: ControlState.setWifi(!Networking.wifiEnabled)
     }
 
     StyledText {
         width: parent.width
-        visible: !Networking.wifiEnabled || root.networks.length === 0
+        visible: !root.sharing && (!Networking.wifiEnabled || root.networks.length === 0)
         topPadding: 18
         bottomPadding: 18
         horizontalAlignment: Text.AlignHCenter
@@ -52,7 +57,7 @@ Column {
     Flickable {
         width: parent.width
         height: Math.min(contentHeight, 6 * 50)
-        visible: Networking.wifiEnabled && root.networks.length > 0
+        visible: !root.sharing && Networking.wifiEnabled && root.networks.length > 0
         contentHeight: list.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
@@ -79,8 +84,11 @@ Column {
                           : failed !== "" ? failed
                           : n.known ? "Saved" : ""
                     trailing: root.secured(n) ? "lock" : ""
+                    action: n.connected ? "qr_code_2" : ""
+                    actionText: n.connected ? "Share" : ""
                     current: n.connected
                     busy: n.stateChanging
+                    onActionClicked: root.sharing = true
 
                     onClicked: {
                         if (n.connected)
@@ -166,6 +174,16 @@ Column {
                     }
                 }
             }
+        }
+    }
+
+    // Share: the code, name and password; Done (or leaving the page) forgets them.
+    Loader {
+        width: parent.width
+        active: root.sharing
+        visible: active
+        sourceComponent: WifiShare {
+            onDone: root.sharing = false
         }
     }
 }

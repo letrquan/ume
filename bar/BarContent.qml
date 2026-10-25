@@ -51,7 +51,9 @@ Item {
         clock: clockItem, media: mediaItem, tray: trayItem, network: networkItem,
         bluetooth: bluetoothItem, volume: volumeItem, battery: batteryItem,
         notifications: bellItem, controls: controlsItem, power: powerItem, divider: dividerItem,
-        recording: recordingItem, focus: focusItem, devices: devicesItem, phone: phoneItem, keyboard: keyboardItem,
+        recording: recordingItem, focus: focusItem, devices: devicesItem, phone: phoneItem, keyboard: keyboardItem, tailscale: tailscaleItem,
+        updates: updatesItem,
+        drives: drivesItem,
         cpu: cpuItem, memory: memoryItem, temperature: temperatureItem, netspeed: netspeedItem, disk: diskItem
     })
 
@@ -183,6 +185,8 @@ Item {
     Component { id: focusItem; FocusButton {} }
     Component { id: devicesItem; DevicesItem {} }
     Component { id: phoneItem; PhoneItem {} }
+    Component { id: updatesItem; UpdatesItem {} }
+    Component { id: tailscaleItem; TailscaleItem {} }
     Component { id: agentsItem; AgentsItem {} }
     Component { id: keyboardItem; KeyboardButton {} }
     Component { id: cpuItem; Stat { kind: "cpu" } }
@@ -191,4 +195,5 @@ Item {
     Component { id: netspeedItem; Stat { kind: "netspeed" } }
     Component { id: diskItem; Stat { kind: "disk" } }
     Component { id: privacyItem; PrivacyItem {} }
+    Component { id: drivesItem; DrivesItem {} }
 }

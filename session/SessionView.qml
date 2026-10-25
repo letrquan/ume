@@ -16,7 +16,9 @@ import qs.services
 //      ╰─────────────────────────────────────────────────────╯
 //
 // Restart, Shut down and Log out ask for a second press (a ring shows the
-// time left). Plain QtQuick + SessionState, so it can be previewed.
+// time left). "Restart to Windows" joins them when the firmware has a
+// Windows entry (services/WindowsBoot.qml). Plain QtQuick + SessionState,
+// so it can be previewed.
 Item {
     id: root
 
@@ -78,7 +80,7 @@ Item {
             root.move(-1);
         else if (k === Qt.Key_Return || k === Qt.Key_Enter || k === Qt.Key_Space)
             root.press(root.selected);
-        else if (k >= Qt.Key_1 && k <= Qt.Key_5)
+        else if (k >= Qt.Key_1 && k < Qt.Key_1 + root.actions.length)
             root.press(k - Qt.Key_1);
         else
             return;
@@ -162,6 +164,17 @@ Item {
                     role: "caption"
                     color: Colors.textOnSurfaceVariant
                 }
+                // The updates panel is installing: its sleep / shutdown lock
+                // (systemd-inhibit "mine updates") turns Sleep, Restart and
+                // Shut down away until it's done.
+                StyledText {
+                    visible: UpdateRun.busy
+                    topPadding: 4
+                    text: "Updates are installing: Sleep, Restart and Shut down are blocked until they're done"
+                    role: "caption"
+                    weight: 650
+                    color: Colors.error
+                }
             }
 
             Row {
@@ -186,7 +199,7 @@ Item {
 
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "←  →  choose   ·   Enter   ·   1–5   ·   Esc closes"
+                text: "←  →  choose   ·   Enter   ·   1–" + root.actions.length + "   ·   Esc closes"
                 role: "caption"
                 color: Colors.textOnSurfaceVariant
                 opacity: 0.8

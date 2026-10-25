@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Effects
-import Quickshell.Services.Mpris
 import qs.common
 
 // Now playing, as a tall card: the cover in a turning cookie, title,
@@ -8,11 +7,8 @@ import qs.common
 LockCard {
     id: root
 
-    // The first player that plays, else the first one at all.
-    readonly property var player: {
-        const list = Mpris.players.values;
-        return list.find(p => p.isPlaying) ?? list[0] ?? null;
-    }
+    // The player the whole shell shows (common/Players.qml).
+    readonly property var player: Players.active
     readonly property bool hasMedia: player !== null && (player.trackTitle ?? "") !== ""
     readonly property bool playing: player?.isPlaying ?? false
 
@@ -51,7 +47,7 @@ LockCard {
         Image {
             id: cover
             anchors.fill: parent
-            source: root.player?.trackArtUrl ?? ""
+            source: Players.art(root.player)
             sourceSize: Qt.size(256, 256)
             fillMode: Image.PreserveAspectCrop
             asynchronous: true

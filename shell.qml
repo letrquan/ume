@@ -27,6 +27,7 @@ import qs.sysmon
 import qs.overview
 import qs.osk
 import qs.activity
+import qs.updates
 
 // My own shell for mango. Run: qs -c mine   (or: mine on, see ~/.local/bin/mine)
 // The bar (three glass islands), the OSD (volume / brightness / mic),
@@ -77,6 +78,8 @@ import qs.activity
 // and there's no UseQApplication, so no Qt Widgets (tray menus are drawn by
 // the shell, bar/TrayMenu.qml).
 ShellRoot {
+    id: shell
+
     Variants {
         model: Quickshell.screens
 
@@ -222,9 +225,29 @@ ShellRoot {
         }
     }
 
+    // The updates panel (click the bar's updates item), only on the screen
+    // it was opened on and only while needed.
+    Variants {
+        model: Quickshell.screens
+
+        Scope {
+            id: updatesScope
+            required property ShellScreen modelData
+
+            LazyLoader {
+                active: UpdatesState.mapped && UpdatesState.screen === updatesScope.modelData.name
+
+                UpdatesWindow {
+                    modelData: updatesScope.modelData
+                }
+            }
+        }
+    }
+
     // Super+N runs `mine control-center`, which calls this.
-    // Pages: main, wifi, bluetooth, audio.
+    // Pages: main, wifi, bluetooth, audio, phone, tailscale.
     IpcHandler {
+        id: controlIpc
         target: "control"
 
         function toggle(page: string): void {
@@ -239,16 +262,153 @@ ShellRoot {
         }
     }
 
+    // Tailscale (services/Tailscale.qml; on and off need you as its
+    // operator: sudo tailscale set --operator=$USER, once).
+    // qs -c mine ipc call tailscale status | up | down | page
+    IpcHandler {
+        target: "tailscale"
+
+        function status(): string {
+            return Tailscale.summary;
+        }
+        function up(): void {
+            Tailscale.setRunning(true);
+        }
+        function down(): void {
+            Tailscale.setRunning(false);
+        }
+        function page(): void {
+            ControlState.toggle("tailscale");
+        }
+    }
+
+    // The battery and USB drive popups (a click on the bar's battery or USB
+    // item: control/BarPopupWindow.qml), only on the screen they were opened
+    // on and only while needed; tidied up after like the others below.
+    Variants {
+        model: Quickshell.screens
+
+        Scope {
+            id: barPopupScope
+            required property ShellScreen modelData
+
+            LazyLoader {
+                active: BarPopupState.mapped && BarPopupState.screen === barPopupScope.modelData.name
+
+                BarPopupWindow {
+                    modelData: barPopupScope.modelData
+                }
+            }
+        }
+    }
+    Connections {
+        target: BarPopupState
+        function onMappedChanged() {
+            if (!BarPopupState.mapped)
+                tidy.restart();
+        }
+    }
+    // USB drives (services/Drives.qml): reading this starts watching for
+    // them with the shell (the notification needs no bar item).
+    readonly property bool drivesWatching: Drives.enabled
+
+    // qs -c mine ipc call battery popup | status
+    // (status: JSON with the charge, health, wear, cycles and history points.)
+    IpcHandler {
+        target: "battery"
+
+        function popup(): void {
+            BarPopupState.toggle("battery", "", Qt.rect(0, 0, 0, 0));
+        }
+        function status(): string {
+            BatteryHealth.refresh();
+            return BatteryHealth.status();
+        }
+    }
+
+    // qs -c mine ipc call drives popup | status | open <key> | eject <key>
+    // (status: JSON list; a key is the drive's name, e.g. sdb, or its key.)
+    IpcHandler {
+        target: "drives"
+
+        function popup(): void {
+            BarPopupState.toggle("drives", "", Qt.rect(0, 0, 0, 0));
+        }
+        function status(): string {
+            return Drives.status();
+        }
+        function open(key: string): void {
+            Drives.open(key);
+        }
+        function eject(key: string): void {
+            Drives.eject(key);
+        }
+    }
+
+    // Control center extras (ctl): name that song, airplane mode, hotspot.
+    // qs -c mine ipc call song listen | stop | status
+    // qs -c mine ipc call airplane toggle | on | off | status
+    // qs -c mine ipc call hotspot status | off | page
+    IpcHandler {
+        target: "song"
+
+        function listen(): void {
+            SongRec.toggle("");
+        }
+        function stop(): void {
+            SongRec.stop();
+        }
+        function status(): string {
+            return SongRec.status();
+        }
+    }
+    IpcHandler {
+        target: "airplane"
+
+        function toggle(): void {
+            Airplane.toggle();
+        }
+        function on(): void {
+            Airplane.setOn(true);
+        }
+        function off(): void {
+            Airplane.setOn(false);
+        }
+        function status(): string {
+            return Airplane.on ? "on" : "off";
+        }
+    }
+    IpcHandler {
+        target: "hotspot"
+
+        function status(): string {
+            return Hotspot.on ? "on " + Hotspot.ssid : "off";
+        }
+        function off(): void {
+            Hotspot.setOn(false);
+        }
+        function page(): void {
+            ControlState.toggle("hotspot");
+        }
+    }
+
     // Tidy up after popups. Each one leaves JS garbage behind (search
     // results, rows, models) and the engine only collects it when it runs
     // short, so it piles up: ~40 MB after a few launcher opens. Collect once
     // everything has closed (measured: memory then stays flat).
     readonly property bool anyPopup: LauncherState.mapped || ClipboardState.mapped
         || ControlState.mapped || CalendarState.mapped || NowPlayingState.mapped || SysmonState.mapped
-        || VolumeState.mapped || CheatSheetState.mapped || SessionState.mapped
+        || VolumeState.mapped || UpdatesState.mapped || CheatSheetState.mapped || SessionState.mapped
         || SwitcherState.mapped || Wallpaper.pickerMapped || Notifs.centerMapped
         || SettingsState.open || OverviewState.mapped
-    onAnyPopupChanged: if (!anyPopup) tidy.restart()
+    // A popup opening before then cancels it: a collection in the middle of
+    // its opening animation is a frame or two the animation doesn't get.
+    onAnyPopupChanged: {
+        if (anyPopup)
+            tidy.stop();
+        else
+            tidy.restart();
+    }
     Timer {
         id: tidy
         interval: 1500
@@ -277,6 +437,7 @@ ShellRoot {
 
     // Super+V runs `mine clipboard`, which calls this.
     IpcHandler {
+        id: clipboardIpc
         target: "clipboard"
 
         function toggle(): void {
@@ -325,6 +486,7 @@ ShellRoot {
 
     // Media keys: mango runs `mine key <action>`, which calls this.
     IpcHandler {
+        id: keysIpc
         target: "keys"
 
         function volumeUp(): void {
@@ -356,8 +518,35 @@ ShellRoot {
         }
     }
 
+    // Auto brightness (services/AutoBrightness.qml): reading this starts it
+    // (nothing runs while Style.autoBrightness is off).
+    readonly property bool autoBrightnessOn: AutoBrightness.enabled
+
+    // qs -c mine ipc call autobright on | off | toggle | forget | status
+    // (status: JSON with the light, the target and what it learned.)
+    IpcHandler {
+        target: "autobright"
+
+        function on(): void {
+            AutoBrightness.setOn(true);
+        }
+        function off(): void {
+            AutoBrightness.setOn(false);
+        }
+        function toggle(): void {
+            AutoBrightness.toggle();
+        }
+        function forget(): void {
+            AutoBrightness.forget();
+        }
+        function status(): string {
+            return AutoBrightness.status();
+        }
+    }
+
     // Super (tap) runs `mine launcher`, which calls this.
     IpcHandler {
+        id: launcherIpc
         target: "launcher"
 
         function toggle(): void {
@@ -401,6 +590,7 @@ ShellRoot {
     }
 
     IpcHandler {
+        id: sessionIpc
         target: "session"
 
         function toggle(): void {
@@ -408,6 +598,26 @@ ShellRoot {
         }
         function close(): void {
             SessionState.close();
+        }
+    }
+
+    // Restart to Windows (services/WindowsBoot.qml; also the power menu's
+    // button while the firmware has a Windows Boot Manager entry).
+    // qs -c mine ipc call winboot restart | status | check
+    // (restart: the password dialog, then BootNext = Windows and a restart;
+    // no second press: the password is the confirmation.)
+    IpcHandler {
+        target: "winboot"
+
+        function restart(): void {
+            SessionState.close();
+            WindowsBoot.restart();
+        }
+        function status(): string {
+            return WindowsBoot.status();
+        }
+        function check(): void {
+            WindowsBoot.check();
         }
     }
 
@@ -447,6 +657,11 @@ ShellRoot {
         }
     }
 
+    // The small wallpaper copy the frosted panels blur (power menu, cheat
+    // sheet, Alt+Tab, OSD…): reading it here decodes it in the background
+    // at start, so their first opening doesn't (common/SmallWallpaper.qml).
+    readonly property bool smallWallpaper: SmallWallpaper.ready
+
     // The clock, the weather and the widget cards on the desktop
     // (Style.desktopClock, Style.desktopWidgets).
     Variants {
@@ -480,6 +695,8 @@ ShellRoot {
     // Your phone (KDE Connect, services/Phone.qml): asked once at start, so
     // the control center knows whether to show its tile.
     readonly property bool phoneInstalled: Phone.installed
+    // Tailscale (services/Tailscale.qml): asked once at start, likewise.
+    readonly property bool tailscaleInstalled: Tailscale.installed
     // Claude Code sessions done or waiting for you (services/Agents.qml).
     readonly property bool agentsWatching: Agents.watching
 
@@ -497,6 +714,47 @@ ShellRoot {
         function skip(): void {
             FocusTimer.skip();
         }
+    }
+
+    // Package updates (services/Updates.qml, the bar's "updates" item).
+    // qs -c mine ipc call updates check | run | panel | status
+    // (run: the update command in a terminal; panel: the updates panel;
+    // `done` is what the update terminal, or the panel's install, says when
+    // it ends.)
+    IpcHandler {
+        target: "updates"
+
+        function check(): void {
+            Updates.check("ipc");
+        }
+        function run(): void {
+            Updates.run();
+        }
+        function panel(): void {
+            UpdatesState.request();
+        }
+        function done(): void {
+            Updates.done();
+        }
+        function status(): string {
+            const install = UpdateRun.describe();
+            return (Updates.checking ? "checking"
+                : Updates.count + " (" + (Updates.summary || "none") + "), checked " + Updates.ago(Updates.checkedAt)
+                  + (Updates.failed !== "" ? "; " + Updates.failed : "")
+                  + (Updates.headsUp.length > 0 ? "; heads-up: " + Updates.headsUp.join(" ") : ""))
+                + (install !== "" ? "; install " + install : "");
+        }
+    }
+
+    // The panel's install (services/UpdateRun.qml): reading this starts it
+    // with the shell, so an install still going on (or just finished) while
+    // the shell restarted is picked back up at once.
+    readonly property bool updateRunWatching: UpdateRun.loaded
+    // The password dialog is up: the updates panel lets it have the keyboard.
+    Binding {
+        target: UpdatesState
+        property: "passwordUp"
+        value: PolkitService.active
     }
 
     // Night light (services/NightLight.qml): reading it here starts wlsunset
@@ -538,6 +796,7 @@ ShellRoot {
 
     // qs -c mine ipc call wallpaper toggle | set <path> | next | random | get
     IpcHandler {
+        id: wallpaperIpc
         target: "wallpaper"
 
         function toggle(): void {
@@ -567,7 +826,10 @@ ShellRoot {
 
     // qs -c mine ipc call screenshot region | window | screen | text | close
     // (text: copy the words in a region, Super+Shift+T)
+    // … screenshot edit <file.png>: mark up a saved screenshot (the
+    // notification's Edit); prints "ok", or why not (then use swappy).
     IpcHandler {
+        id: screenshotIpc
         target: "screenshot"
 
         function region(): void {
@@ -585,12 +847,27 @@ ShellRoot {
         function close(): void {
             Screenshot.close();
         }
+        function edit(file: string): string {
+            return Screenshot.editSaved(file);
+        }
+        // The overlay on a tool: scan a QR code or barcode, search with
+        // Google Lens, translate the text (services/Screenshot.qml).
+        function qr(): void {
+            Screenshot.qr();
+        }
+        function lens(): void {
+            Screenshot.lens();
+        }
+        function translate(): void {
+            Screenshot.translate();
+        }
     }
 
     // Screen recording (services/Recorder.qml): Super+Shift+R / Super+Alt+R
     // run `mine record screen|region`; either one stops a recording.
     // qs -c mine ipc call record toggle | screen | region | stop
     IpcHandler {
+        id: recordIpc
         target: "record"
 
         function toggle(): void {
@@ -610,6 +887,7 @@ ShellRoot {
     // Color picker (services/ColorPicker.qml): Super+Shift+C runs
     // `mine picker`. qs -c mine ipc call picker pick
     IpcHandler {
+        id: pickerIpc
         target: "picker"
 
         function pick(): void {
@@ -682,6 +960,25 @@ ShellRoot {
         }
     }
 
+    // Lyrics: the card's on/off (toggle), the bar's line (bar), look the
+    // song up again (reload), what it has (status).
+    IpcHandler {
+        target: "lyrics"
+
+        function toggle(): void {
+            Settings.set("lyricsInCard", !Style.lyricsInCard);
+        }
+        function bar(): void {
+            Settings.set("lyricsInBar", !Style.lyricsInBar);
+        }
+        function reload(): void {
+            Lyrics.reload();
+        }
+        function status(): string {
+            return Lyrics.describe();
+        }
+    }
+
     // The System popup (click a stat on the bar): only exists while open.
     Variants {
         model: Quickshell.screens
@@ -721,6 +1018,7 @@ ShellRoot {
 
     // Alt+Tab / Alt+Shift+Tab run `mine switcher next|previous`, which call this.
     IpcHandler {
+        id: switcherIpc
         target: "switcher"
 
         function next(): void {
@@ -766,6 +1064,7 @@ ShellRoot {
     // Super+/ runs `mine cheatsheet`, which calls this.
     // qs -c mine ipc call cheatsheet toggle | open | close
     IpcHandler {
+        id: cheatsheetIpc
         target: "cheatsheet"
 
         function toggle(): void {
@@ -792,6 +1091,7 @@ ShellRoot {
     // Super+O (and 4 fingers up) run `mine overview`, which calls this.
     // qs -c mine ipc call overview toggle | open | close
     IpcHandler {
+        id: overviewIpc
         target: "overview"
 
         function toggle(): void {
@@ -820,6 +1120,7 @@ ShellRoot {
     // switchbind, through `mine`. Not "show": `qs ipc call osk show` would
     // list the target instead.)
     IpcHandler {
+        id: oskIpc
         target: "osk"
 
         function toggle(): void {
@@ -868,6 +1169,66 @@ ShellRoot {
         }
         function status(): string {
             return AutoRotate.status();
+        }
+    }
+
+    // ---- Key binds' quick way in -------------------------------------------------
+    // mango's key binds run ~/.local/bin/mine, which used to start a whole
+    // `qs ipc` client for every key: ~80 ms before the shell even heard of
+    // it (Super, Alt+Tab, every volume key repeat). Now mine writes one line,
+    // "<target> <function> [argument]", to this socket (socat, ~5 ms), and
+    // the shell calls that IpcHandler above, like `qs ipc call` would. The
+    // answer is "ok", or "no" (no such handler or function), and then mine
+    // still tries `qs ipc` as before. Only the user can reach the socket
+    // ($XDG_RUNTIME_DIR), the same as `qs ipc`; a file left by a crash is
+    // replaced when the shell starts again. MINE_IPC_SOCKET: tests.
+    readonly property string ipcSocket: Quickshell.env("MINE_IPC_SOCKET")
+        || `${Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"}/qs-${Quickshell.shellDir.replace(/\/+$/, "").split("/").pop()}.sock`
+
+    // The handlers key binds use (ShellRoot's children can't be walked from JS).
+    readonly property list<IpcHandler> quickHandlers: [launcherIpc, controlIpc, sessionIpc, wallpaperIpc,
+        clipboardIpc, overviewIpc, cheatsheetIpc, pickerIpc, switcherIpc, keysIpc, screenshotIpc, recordIpc, oskIpc]
+
+    // Only a function the handler itself declares, like `qs ipc` allows:
+    // not one every object has (destroy, toString…) nor a change signal.
+    readonly property var notCallable: ["destroy", "deleteLater", "toString", "valueOf", "constructor", "connect",
+        "disconnect", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString"]
+    function quickCall(line: string): bool {
+        const [target, fn, ...rest] = line.trim().split(/\s+/);
+        if (!target || !fn || !/^[a-z][A-Za-z0-9]*$/.test(fn) || /Changed$/.test(fn) || shell.notCallable.includes(fn))
+            return false;
+        for (const handler of shell.quickHandlers) {
+            if (handler.target !== target || typeof handler[fn] !== "function")
+                continue;
+            // A call that throws still counts as heard: mine must not run
+            // it a second time through qs ipc.
+            try {
+                if (rest.length > 0)
+                    handler[fn](rest.join(" "));
+                else
+                    handler[fn]();
+            } catch (e) {
+                console.warn("ipc:", line.trim(), "failed:", e);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    SocketServer {
+        active: true
+        path: shell.ipcSocket
+
+        handler: Socket {
+            id: caller
+
+            parser: SplitParser {
+                onRead: line => {
+                    caller.write(shell.quickCall(line) ? "ok\n" : "no\n");
+                    caller.flush();
+                    caller.connected = false;
+                }
+            }
         }
     }
 }

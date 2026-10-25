@@ -2,7 +2,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Services.Mpris
 import qs.common
 
 // The album cover's colors while music plays (Style.artColors): the shell's
@@ -23,13 +22,10 @@ Singleton {
 
     readonly property bool enabled: Style.artColors
 
-    // The first player that's playing, else the first one at all (like the bar).
-    readonly property var player: {
-        const list = Mpris.players.values;
-        return list.find(p => p.isPlaying) ?? list[0] ?? null;
-    }
+    // The player the whole shell shows (common/Players.qml).
+    readonly property var player: Players.active
     readonly property bool playing: player?.isPlaying ?? false
-    readonly property string artUrl: player?.trackArtUrl ?? ""
+    readonly property string artUrl: Players.art(player)
 
     // What should show: this cover, in this mode and color style ("" = the
     // wallpaper's colors).
@@ -159,7 +155,7 @@ Singleton {
         fetcher.forKey = k;
         fetcher.command = ["sh", "-c",
             'mkdir -p "$1" || exit 1; [ -s "$2" ] && exit 0; '
-            + 'curl -sfL --max-time 15 -o "$2.part" "$3" && mv "$2.part" "$2" || { rm -f "$2.part"; exit 1; }; '
+            + 'curl -sfL --proto =https --proto-redir =https --max-time 15 --max-filesize 20000000 -o "$2.part" -- "$3" && mv "$2.part" "$2" || { rm -f "$2.part"; exit 1; }; '
             + 'ls -t "$1" | tail -n +31 | while read -r f; do rm -f "$1/$f"; done',
             "sh", artDir, fetcher.file, url];
         fetcher.running = true;

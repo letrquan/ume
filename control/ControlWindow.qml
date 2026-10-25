@@ -6,8 +6,8 @@ import qs.services
 
 // The control center window on one screen. It covers the whole screen
 // (see-through) so a click outside closes it, and takes the keyboard while
-// open (Esc: back, then close; the Wi-Fi password field). shell.qml creates
-// it only while open (ControlState.mapped).
+// open (Esc: out of editing the tiles, back, then close; the Wi-Fi
+// password field). shell.qml creates it only while open (ControlState.mapped).
 PanelWindow {
     id: root
 
@@ -52,7 +52,9 @@ PanelWindow {
         id: keys
         focus: true
         Keys.onEscapePressed: {
-            if (ControlState.page !== "main")
+            if (ControlState.editing)
+                ControlState.editing = false;
+            else if (ControlState.page !== "main")
                 ControlState.page = "main";
             else
                 ControlState.close();

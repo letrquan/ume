@@ -40,9 +40,9 @@ Item {
         y: -root.at.y
         width: root.screenWidth
         height: root.screenHeight
-        source: Colors.wallpaper !== "" ? "file://" + Colors.wallpaper : ""
-        // Fixed, and Backdrop's: decoded once, shared (see Backdrop.qml).
-        sourceSize.width: Style.backdropDecodeWidth
+        // Fixed, and Backdrop's: one decoded copy, kept (SmallWallpaper.qml).
+        source: SmallWallpaper.source
+        sourceSize: SmallWallpaper.size
         fillMode: Image.PreserveAspectCrop
         visible: false
     }

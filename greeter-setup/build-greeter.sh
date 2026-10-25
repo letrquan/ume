@@ -14,20 +14,34 @@ here=$(cd "$(dirname "$0")" && pwd)
 
 [ -f "$src/greeter.qml" ] || { echo "build-greeter: no greeter.qml in $src" >&2; exit 1; }
 
+# Only real files go into the folder root runs the login screen from. A
+# link in your tree (to /etc/shadow, or to QML of yours somewhere else) would
+# be copied as what it points at, made readable to all, or kept as a link
+# the login screen follows. None is ever needed, so any one stops the build.
+links=$(find "$src/greeter.qml" "$src/greeter" "$src/common" "$src/lock" "$here/run-greeter.sh" -type l 2>/dev/null)
+if [ -n "$links" ]; then
+    echo "build-greeter: links in the shell folder, not built:" >&2
+    echo "$links" >&2
+    exit 1
+fi
+
 rm -rf "$dest"
 mkdir -p "$dest/lock" "$dest/fonts"
-cp "$src/greeter.qml" "$dest/"
-cp -r "$src/greeter" "$src/common" "$dest/"
+cp -P "$src/greeter.qml" "$dest/"
+cp -rP "$src/greeter" "$src/common" "$dest/"
 # All of lock/, not a list of the parts MacView uses: a new part missing from
 # such a list made the login screen fail to load (a black screen at boot).
 # Parts it doesn't use cost nothing; QML only reads the ones a screen uses.
-cp "$src"/lock/*.qml "$dest/lock/"
-cp "$here/run-greeter.sh" "$dest/run-greeter.sh"
+cp -P "$src"/lock/*.qml "$dest/lock/"
+cp -P "$here/run-greeter.sh" "$dest/run-greeter.sh"
 
 # Fonts (only these two families; the icon font is system-wide already).
 fonts=$home/.local/share/fonts
 find "$fonts" -type f \( -name 'GoogleSansFlex*.ttf' -o -name 'SF-Pro-Rounded-*.otf' \) \
-    -exec cp {} "$dest/fonts/" \; 2>/dev/null || true
+    -exec cp -P {} "$dest/fonts/" \; 2>/dev/null || true
+# (A font swapped for a link between find and cp would be copied as a link:
+# none goes in.)
+find "$dest/fonts" -type l -delete
 
 # Does it load? Started off screen for a few seconds, as the greeter user
 # when there is one: a missing part or a typo stops it at once ("Failed to

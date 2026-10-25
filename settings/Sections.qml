@@ -238,6 +238,21 @@ Singleton {
                     { name: "privacyCameraPoll", kind: "number", label: "Look at the camera every", desc: "Its power state only (a tiny read); which apps use it is looked up when it starts", from: 1000, to: 10000, step: 500, format: root.ms },
                     { name: "osdIme", kind: "bool", label: "Typing language popup", desc: "English / Tiếng Việt when you switch (Super+Space); the tray shows EN / VI either way" }
                 ] },
+                { title: "Updates", rows: [
+                    { name: "updatesInterval", kind: "number", label: "Check every", desc: "Add \"Updates\" to the bar above; it shows only while some wait. Only checked while it's on the bar and online", from: 0, to: 24, step: 1, format: v => v <= 0 ? "Only when asked" : Math.round(v) + " h" },
+                    { name: "updatesFirstDelay", kind: "number", label: "First check after login", desc: "Gives the network and the login a moment", from: 1, to: 30, step: 1, format: v => Math.round(v) + " min" },
+                    { name: "updatesClick", kind: "choice", label: "Click the item for", desc: "Panel: the lists, Arch news, and Update right under the item (it installs the repo packages and Flatpaks itself; AUR ones go to the terminal). Right click always checks now",
+                      choices: [{ value: "panel", label: "Panel" }, { value: "terminal", label: "Terminal" }] },
+                    { name: "updatesFlatpak", kind: "bool", label: "Flatpak too", desc: "Counts Flatpak apps and runtimes, and updates them after the packages (the panel's Update, and after the command)" },
+                    { name: "updatesCommand", kind: "text", label: "Update command", desc: "Runs in a terminal: the panel's In terminal, or the click when it opens the terminal", placeholder: "paru" },
+                    { name: "updatesNews", kind: "bool", label: "Arch news in the panel", desc: "News from archlinux.org newer than your last full upgrade (they sometimes say what to do by hand); read at most every 3 hours" },
+                    { name: "updatesPanelWidth", kind: "number", label: "Panel width", desc: "", from: 320, to: 480, step: 10, format: root.px },
+                    { name: "updatesHeadsUp", kind: "text", label: "Heads-up for", desc: "Named in the tip and the panel (and the icon turns accent) when they're among the updates; the panel's Update asks again, listing them; * matches anything, commas between; empty = the usual ones",
+                      placeholder: "quickshell*, linux-*, …", commit: t => root.setList("updatesHeadsUp", t) },
+                    { kind: "action", label: "Check now", desc: "", button: "Check", run: () => Updates.check("settings"),
+                      status: () => Updates.checking ? "Checking…" : Updates.failed !== "" ? Updates.failed
+                          : Updates.checkedAt > 0 ? (Updates.count === 0 ? "Up to date" : Updates.count + " waiting (" + Updates.summary + ")") + ", checked " + Updates.ago(Updates.checkedAt) : "Not checked yet" }
+                ] },
                 { title: "", rows: [
                     { kind: "action", label: "Default bar", desc: "Every island back to how it came", button: "Reset", confirm: true,
                       run: () => { Settings.reset("barLeft"); Settings.reset("barCenter"); Settings.reset("barRight"); } }
@@ -428,7 +443,7 @@ Singleton {
         },
         {
             id: "panels", title: "Popups & panels", icon: "widgets",
-            blurb: "The control center, the Now Playing card, the volume and brightness popup, the power menu, the password dialog and your phone.",
+            blurb: "The control center, the Now Playing card, the volume and brightness popup, the power menu, the password dialog, your phone and Tailscale.",
             groups: [
                 { title: "Control center", rows: [
                     { name: "ccWidth", kind: "number", label: "Width", desc: "", from: 340, to: 520, step: 10, format: root.px },
@@ -446,6 +461,19 @@ Singleton {
                     { name: "nowPlayingOpacity", kind: "number", label: "Glass", desc: "", from: 0.5, to: 0.98, step: 0.02, format: root.percent },
                     { name: "nowPlayingRadius", kind: "number", label: "Corners", desc: "The cover's follow", from: 12, to: 40, step: 1, format: root.px },
                     { name: "nowPlayingSeekStep", kind: "number", label: "← → jump", desc: "Seconds per key press", from: 2, to: 30, step: 1, format: v => Math.round(v) + " s" }
+                ] },
+                { title: "Lyrics", rows: [
+                    { name: "lyricsEnabled", kind: "bool", label: "Lyrics", desc: "Looked up on lrclib.net (it gets the song's title, artist, album and length) and kept on this computer" },
+                    { name: "lyricsInCard", kind: "bool", label: "In the Now Playing card", desc: "Under the song, the line being sung lit up; click a line to go there" },
+                    { name: "lyricsInBar", kind: "bool", label: "In the bar", desc: "The line being sung in place of the song's name, for songs with timed lyrics" },
+                    { name: "lyricsOnDesktop", kind: "bool", label: "On the desktop", desc: "The song's lines gliding by in the music card on the desktop (timed lyrics only); click a line to go there" },
+                    { name: "lyricsBrowsers", kind: "bool", label: "From browsers", desc: "Also look up what plays in Brave, Firefox, … (YouTube titles go to lrclib.net too, and most aren't songs)" },
+                    { name: "lyricsBarWidth", kind: "number", label: "Bar line width", desc: "Fixed, so the island stays put while lines change", from: 160, to: 420, step: 10, format: root.px },
+                    { name: "lyricsCardHeight", kind: "number", label: "Card lyrics height", desc: "", from: 120, to: 320, step: 8, format: root.px },
+                    { name: "lyricsDesktopHeight", kind: "number", label: "Desktop lyrics height", desc: "", from: 90, to: 320, step: 10, format: root.px },
+                    { name: "lyricsDesktopBlur", kind: "number", label: "Desktop lyrics edge blur", desc: "Where the lines fade out at the top and bottom; 0 = none", from: 0, to: 8, step: 0.5, format: root.halfPx },
+                    { name: "lyricsOffset", kind: "number", label: "Timing", desc: "Lines this much earlier (below 0: later)", from: -2, to: 2, step: 0.1, format: v => (v > 0.04 ? "+" : "") + v.toFixed(1) + " s" },
+                    { kind: "action", label: "This song's lyrics", desc: "Wrong or missing? Look them up again", button: "Look again", run: () => Lyrics.reload() }
                 ] },
                 { title: "Volume and brightness popup", rows: [
                     { name: "osdHideDelay", kind: "number", label: "Stays for", desc: "After the last change", from: 500, to: 5000, step: 100, format: root.ms },
@@ -487,6 +515,65 @@ Singleton {
                     { name: "phoneBatteryWarn", kind: "number", label: "Red under", desc: "The bar item's battery (\"Phone\" in Bar items)", from: 0, to: 50, step: 5,
                       format: v => v <= 0 ? "Never" : Math.round(v) + "%" },
                     { kind: "action", label: "Check again", desc: "Ask KDE Connect now", button: "Check", run: () => Phone.refresh() }
+                ] },
+                { title: "Tailscale", rows: [
+                    { kind: "info", label: "Tailscale", text: () => !Tailscale.known ? "Checking…"
+                        : !Tailscale.installed ? "Not installed: sudo pacman -S tailscale, then sudo systemctl enable --now tailscaled and tailscale up"
+                        : Tailscale.summary + (Tailscale.tailnet !== "" ? " · " + Tailscale.tailnet : "") },
+                    { name: "ccTailscale", kind: "bool", label: "Tailscale tile in the control center", desc: "On and off, your devices, the exit node" },
+                    { kind: "action", label: "Turn it on and off from the shell", desc: "Needs sudo once (the shell can't): copies the command that makes you Tailscale's operator", button: "Copy command",
+                      run: () => Tailscale.copyOperatorCommand(),
+                      status: () => !Tailscale.prefsKnown ? ""
+                          : Tailscale.canControl ? "Done: you're Tailscale's operator"
+                          : "To do: " + Tailscale.operatorCommand + " in a terminal" },
+                    { name: "tailscaleCopy", kind: "choice", label: "Click a device to copy", desc: "Right click (or a long press): the other one",
+                      choices: [{ value: "ip", label: "Its IP" }, { value: "name", label: "Its name" }] },
+                    { name: "tailscaleHideAfterDays", kind: "number", label: "Fold away devices offline for", desc: "Under \"older devices\" on the page", from: 0, to: 180, step: 5,
+                      format: v => v <= 0 ? "Never" : Math.round(v) + " days" },
+                    { name: "tailscalePollOpen", kind: "number", label: "Check every (control center open)", desc: "", from: 2, to: 30, step: 1, format: v => Math.round(v) + " s" },
+                    { name: "tailscalePollBar", kind: "number", label: "Check every (bar item)", desc: "While \"Tailscale\" is in Bar items", from: 15, to: 600, step: 15, format: root.after }
+                ] },
+                // Switch to GNOME (scripts/switch-session.sh).
+                { title: "Switch to GNOME", rows: [
+                    { name: "sessionGnome", kind: "bool", label: "Switch to GNOME in the power menu", desc: "Logs out with GNOME already picked on the login screen (you still type your password)" }
+                ] },
+                // Restart to Windows (services/WindowsBoot.qml).
+                { title: "Restart to Windows", rows: [
+                    { name: "sessionWindows", kind: "bool", label: "Restart to Windows in the power menu", desc: "Asks for your password, starts Windows once, the next start is Linux again" },
+                    { kind: "info", label: "Windows entry", text: () => !WindowsBoot.known ? "Checking…"
+                        : WindowsBoot.entry === "" ? "None in the firmware (efibootmgr)"
+                        : "Boot" + WindowsBoot.entry + " · Windows Boot Manager" + (WindowsBoot.bootNext !== "" ? " · next start: Boot" + WindowsBoot.bootNext : "") }
+                ] },
+                // USB drives (services/Drives.qml, bar/DrivesItem.qml).
+                { title: "USB drives", rows: [
+                    { name: "drivesWatch", kind: "bool", label: "Watch for USB drives", desc: "The bar item (\"USB drives\" in Bar items) while one is plugged in: size, free space, Open and Eject" },
+                    { name: "drivesNotify", kind: "bool", label: "Notification when one is plugged in", desc: "With Open and Eject" },
+                    { name: "drivesPopupWidth", kind: "number", label: "Popup width", desc: "", from: 280, to: 440, step: 10, format: root.px },
+                    { kind: "info", label: "Plugged in", text: () => Drives.count === 0 ? "None" : Drives.drives.map(d => d.title + " (" + d.sizeText + ")").join(" · ") }
+                ] }
+            ]
+        },
+        // ---- Control center (ctl): its tiles, the hotspot, name that song ---------------
+        {
+            id: "controlcenter", title: "Control center", icon: "toggle_on",
+            blurb: "The tiles at the top of the control center, left to right, row by row. Also from the control center itself: Edit under the tiles (drag to move, − to take away, Add tiles). Sliders and the player always show.",
+            groups: [
+                { title: "Shown", rows: [{ kind: "cctiles", shown: true, label: "" }] },
+                { title: "Not shown", rows: [{ kind: "cctiles", shown: false, label: "" }] },
+                { title: "", rows: [
+                    { kind: "action", label: "Default tiles", desc: "The tiles and the order it came with", button: "Reset", confirm: true,
+                      run: () => Settings.reset("controlTiles") }
+                ] },
+                { title: "Hotspot", rows: [
+                    { name: "hotspotName", kind: "text", label: "Network name", desc: "Empty: Hotspot-<this computer's name>. NetworkManager makes its password the first time and keeps it; the hotspot page shows it",
+                      placeholder: "Hotspot-…" },
+                    { kind: "action", label: "New password", desc: "Forgets the hotspot (NetworkManager's \"Hotspot\" profile): the next one gets a new password", button: "Forget", confirm: true,
+                      run: () => Hotspot.forgetProfile(), status: () => Hotspot.on ? "Turn the hotspot off first" : Hotspot.error }
+                ] },
+                { title: "Name that song", rows: [
+                    { name: "songSource", kind: "choice", label: "Listen to", desc: "Shazam gets a fingerprint of the sound (not the sound). A right click on the tile takes the other one",
+                      choices: [{ value: "output", label: "What plays here" }, { value: "mic", label: "Microphone" }] },
+                    { name: "songListenSeconds", kind: "number", label: "Give up after", desc: "Three tries in that time; the first after a third of it", from: 6, to: 30, step: 3, format: v => Math.round(v) + " s" }
                 ] }
             ]
         },
@@ -571,12 +658,13 @@ Singleton {
                     { name: "desktopClockShowWeather", kind: "bool", label: "Weather", desc: "From Calendar & weather" }
                 ] },
                 { title: "Widgets on the desktop", rows: [
-                    root.widgetRow("music", "Music", "Cover, song and buttons, while something plays"),
+                    root.widgetRow("music", "Music", "Cover, song, buttons and lyrics, while something plays"),
                     root.widgetRow("system", "System", "CPU, memory and temperature rings, network speed"),
                     root.widgetRow("calendar", "Calendar", "This month, and today's events if you set a calendar"),
                     { name: "desktopWidgetsSide", kind: "choice", label: "Where", desc: "Next to the clock, or above it (at the bottom; under it elsewhere)",
                       choices: [{ value: "auto", label: "Auto" }, { value: "beside", label: "Beside" }, { value: "stacked", label: "Stacked" }] },
-                    { name: "desktopWidgetOpacity", kind: "number", label: "Glass", desc: "How solid the cards are", from: 0.3, to: 1, step: 0.05, format: root.percent }
+                    { name: "desktopWidgetOpacity", kind: "number", label: "Glass", desc: "How solid the cards are", from: 0.3, to: 1, step: 0.05, format: root.percent },
+                    { name: "desktopMusicTint", kind: "number", label: "Cover color in the music card", desc: "0 = plain glass", from: 0, to: 1, step: 0.05, format: root.percent }
                 ] },
                 { title: "Night light", rows: [
                     { name: "nightLightMode", kind: "choice", label: "Night light", desc: "Warmer colors, easier on the eyes in the evening",
@@ -599,7 +687,18 @@ Singleton {
                 { name: "screenshotConfirm", kind: "bool", label: "Adjust before saving", desc: "Drag the region into place, then Enter" },
                 { name: "screenshotNotify", kind: "bool", label: "Notification", desc: "With the picture: open, edit or delete it" },
                 { name: "screenshotDim", kind: "number", label: "Darken outside the selection", desc: "", from: 0, to: 0.8, step: 0.05, format: root.percent },
-                { name: "ocrLanguages", kind: "text", label: "Copy text: languages", desc: "Super+Shift+T reads the words in a region. auto = English, plus Vietnamese when tesseract-data-vie is installed", placeholder: "auto" }
+                { name: "screenshotEditor", kind: "choice", label: "Edit with", desc: "Edit in the overlay (E) and the notification's Edit: draw on it right there, or open swappy after saving",
+                  choices: [{ value: "markup", label: "Markup" }, { value: "swappy", label: "swappy" }] },
+                { name: "screenshotPixelSize", kind: "number", label: "Blur blocks", desc: "How coarse the markup's blur is, in real pixels", from: 8, to: 32, step: 2, format: root.px },
+                { name: "ocrLanguages", kind: "text", label: "Copy text: languages", desc: "Super+Shift+T reads the words in a region. auto = English, plus Vietnamese when tesseract-data-vie is installed", placeholder: "auto" },
+                // Scan a QR code, Google Lens, Translate (the overlay's tools).
+                { kind: "info", label: "In the overlay", text: () => "T copy text · Q scan a QR code · L Google Lens · D translate" },
+                { name: "translatePair", kind: "text", label: "Translate: languages", desc: "Yours, then the other one: text in yours goes to the other, anything else to yours", placeholder: "vi:en",
+                  status: () => {
+                      const m = Style.translatePair.trim().match(/^([A-Za-z]{2,3}(?:-[A-Za-z]{2,4})?)\s*[:>,/ ]\s*([A-Za-z]{2,3}(?:-[A-Za-z]{2,4})?)$/);
+                      return m && m[1].toLowerCase() !== m[2].toLowerCase() ? "" : "Two different language codes, like vi:en";
+                  } },
+                { kind: "info", label: "Translate with", text: () => "Google, over HTTPS: the text read off the screen is sent there" }
             ]
         },
         {
@@ -622,7 +721,7 @@ Singleton {
         },
         {
             id: "power", title: "Power & locking", icon: "battery_charging_full",
-            blurb: "Locking, what happens when you leave the laptop alone, and the keys.",
+            blurb: "Locking, what happens when you leave the laptop alone, auto brightness, and the keys.",
             groups: [
                 { title: "", rows: [
                     { name: "lockBeforeSleep", kind: "bool", label: "Lock before sleep", desc: "When the lid closes or the laptop suspends" },
@@ -642,6 +741,16 @@ Singleton {
                     { name: "presenceAwayFor", kind: "number", label: "Lock when nobody's there for", desc: "", from: 5, to: 60, step: 5, format: v => Math.round(v) + " s" },
                     { name: "presenceDimHold", kind: "number", label: "Keep bright while you look, at most", desc: "", from: 60, to: 3600, step: 60, format: root.after }
                 ] },
+                { title: "Auto brightness", rows: [
+                    { name: "autoBrightness", kind: "bool", label: "Auto brightness", desc: "Follows the light around you (the light sensor), and learns from the changes you make yourself" },
+                    { kind: "info", label: "Now", text: () => AutoBrightness.info },
+                    { name: "autoBrightnessMin", kind: "number", label: "Never darker than", desc: "Unless you make it darker yourself (then that's learned)", from: 0.05, to: 0.6, step: 0.05, format: root.percent },
+                    { name: "autoBrightnessMax", kind: "number", label: "Never brighter than", desc: "Unless you make it brighter yourself", from: 0.3, to: 1, step: 0.05, format: root.percent },
+                    { name: "autoBrightnessGlide", kind: "number", label: "A change takes", desc: "A slow glide, not a jump", from: 1, to: 10, step: 1, format: v => Math.round(v) + " s" },
+                    { name: "autoBrightnessHold", kind: "number", label: "After you change it, wait", desc: "Or until the light halves or doubles", from: 1, to: 60, step: 1, format: v => Math.round(v) + " min" },
+                    { kind: "action", label: "Forget what it learned", desc: "Back to the usual curve", button: "Forget", confirm: true,
+                      run: () => AutoBrightness.forget(), status: () => AutoBrightness.learnedText }
+                ] },
                 { title: "Battery", rows: [
                     { name: "batterySaverOnBattery", kind: "bool", label: "Power saver on battery", desc: "Unplugged: Power saver; plugged in: back to what it was" },
                     { name: "batteryWarnLow", kind: "number", label: "Low battery warning", desc: "A notification once per charge", from: 0, to: 40, step: 5, format: v => v <= 0 ? "Off" : Math.round(v) + "%" },
@@ -654,6 +763,16 @@ Singleton {
                 { title: "Keys", rows: [
                     { name: "keyVolumeStep", kind: "number", label: "Volume key step", desc: "", from: 0.01, to: 0.1, step: 0.01, format: root.percent },
                     { name: "keyBrightnessStep", kind: "number", label: "Brightness key step", desc: "", from: 0.01, to: 0.2, step: 0.01, format: root.percent }
+                ] },
+                // Battery popup (services/BatteryHealth.qml, control/BatteryPopup.qml).
+                { title: "Battery popup", rows: [
+                    { kind: "info", label: "Health", text: () => !BatteryHealth.healthKnown ? "Checking…"
+                        : !BatteryHealth.hasHealth ? "The battery doesn't report it"
+                        : BatteryHealth.condition + " · holds " + BatteryHealth.healthText + " of new (" + BatteryHealth.fullText + " of " + BatteryHealth.designText + ")"
+                          + (BatteryHealth.cycles > 0 ? " · " + BatteryHealth.cycles + " cycles" : "") },
+                    { name: "batteryPopup", kind: "bool", label: "Click the battery for its popup", desc: "The charge over the last hours and the battery's health. Off: the click opens the control center (right click always does)" },
+                    { name: "batteryGraphHours", kind: "number", label: "Graph goes back", desc: "UPower's own history of the charge", from: 6, to: 72, step: 6, format: v => Math.round(v) + " h" },
+                    { name: "batteryPopupWidth", kind: "number", label: "Width", desc: "", from: 280, to: 440, step: 10, format: root.px }
                 ] }
             ]
         },
@@ -673,6 +792,9 @@ Singleton {
                     { name: "lockContrastFrom", kind: "number", label: "Help starts at", desc: "Auto: how bright the picture behind must be before anything changes", from: 0.2, to: 0.8, step: 0.05, format: root.percent },
                     { name: "lockContrastTo", kind: "number", label: "Full help at", desc: "Auto: how bright it is when the darker look is at its strongest", from: 0.4, to: 1, step: 0.05, format: root.percent }
                 ] },
+                { title: "What it shows", rows: [
+                    { name: "lockShowMedia", kind: "bool", label: "Now playing", desc: "The song or video playing, with its buttons, in both styles. Off: anyone at the laptop can't see what you listen to or watch" }
+                ] },
                 { title: "Unlock", rows: [
                     { name: "lockFace", kind: "bool", label: "Unlock with your face", desc: "The IR camera, like Windows Hello: it looks once you move the mouse or type on the lock (not the moment it locks), when you come back to it, or when you click your picture. The password always works too" }
                 ] },
@@ -687,7 +809,6 @@ Singleton {
                 { title: "Panel style: cards", rows: [
                     { name: "lockShowWeather", kind: "bool", label: "Weather", desc: "From the Calendar & weather place" },
                     { name: "lockShowFetch", kind: "bool", label: "System info", desc: "user@host, kernel, uptime, packages" },
-                    { name: "lockShowMedia", kind: "bool", label: "Now playing", desc: "" },
                     { name: "lockShowResources", kind: "bool", label: "Gauges", desc: "CPU, memory, temperature, battery" },
                     { name: "lockShowCalendar", kind: "bool", label: "Calendar", desc: "This month" }
                 ] },

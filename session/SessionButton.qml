@@ -19,7 +19,7 @@ Item {
     signal pressed()
 
     implicitWidth: Style.sessionButtonSize + 16
-    implicitHeight: Style.sessionButtonSize + 44
+    implicitHeight: Style.sessionButtonSize + Math.max(44, label.implicitHeight + 24)
 
     opacity: shown ? 1 : 0
     scale: shown ? 1 : 0.6
@@ -128,9 +128,15 @@ Item {
     }
 
     StyledText {
+        id: label
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: badge.bottom
         anchors.topMargin: 12
+        // A long label ("Restart to Windows") goes on two lines under its
+        // button instead of running into its neighbours.
+        width: root.width
+        wrapMode: Text.WordWrap
+        horizontalAlignment: Text.AlignHCenter
         text: root.armed ? "Press again" : root.action.label
         role: "body"
         weight: root.selected || root.armed ? 700 : 500

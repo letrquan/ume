@@ -12,6 +12,7 @@ echo "==> Stopping the VT 7 test, if it's running"
 systemctl stop greetd.service 2>/dev/null || true
 
 echo "==> greetd settings: the real thing (VT 1, no test mode)"
+[ ! -L "$here/config-real.toml" ] || { echo "config-real.toml is a link; not installing."; exit 1; }
 install -m 644 "$here/config-real.toml" /etc/greetd/config.toml
 
 echo "==> GDM off at boot, greetd on (GDM keeps running until you reboot)"

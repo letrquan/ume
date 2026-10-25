@@ -137,16 +137,38 @@ Singleton {
     // ---- Bar items: what each island holds, left to right ----------------------------
     // launcher workspaces layout window clock media tray network bluetooth
     // volume battery notifications controls power divider recording (the
-    // red dot while the screen is recorded), and the system stats cpu
+    // red dot while the screen is recorded), updates (how many packages
+    // wait, while some do), and the system stats cpu
     // memory temperature netspeed disk. Settings → Bar items moves
     // them around (or edit the lists here).
     readonly property var barLeft: Settings.values.barLeft ?? ["launcher", "workspaces", "layout", "window"]
     readonly property var barCenter: Settings.values.barCenter ?? ["clock", "media"]
-    readonly property var barRight: Settings.values.barRight ?? ["recording", "tray", "network", "bluetooth", "volume", "battery", "divider", "notifications", "controls", "power"]
+    readonly property var barRight: Settings.values.barRight ?? ["recording", "tray", "updates", "network", "bluetooth", "volume", "battery", "divider", "notifications", "controls", "power"]
     // Items that have nothing to say step aside: the phone while it isn't
     // connected, the on-screen keyboard button outside tablet mode (or while
     // the keyboard isn't up). They slide back in when they're needed.
     readonly property bool barHideUnused: Settings.values.barHideUnused ?? true
+
+    // ---- Updates (the bar's "updates" item) ---------------------------------------------
+    // How many package updates wait (repos via checkupdates, the AUR via paru,
+    // Flatpak); hidden while there are none. Click: the updates panel (the
+    // lists, Arch news, Update installs the repo packages and Flatpaks right
+    // there; "In terminal" runs the update command), or with updatesClick
+    // "terminal" the update command in a terminal as before; right-click:
+    // check now. Only checked while the item is on the bar.
+    readonly property int updatesInterval: Settings.values.updatesInterval ?? 3    // hours between checks; 0 = never on its own
+    readonly property int updatesFirstDelay: Settings.values.updatesFirstDelay ?? 5    // minutes after login before the first check
+    readonly property int updatesRetry: Settings.values.updatesRetry ?? 30    // minutes before trying again when a check failed
+    readonly property string updatesCommand: Settings.values.updatesCommand ?? "paru"    // shell text run in the terminal ("paru" = paru -Syu)
+    readonly property string updatesClick: Settings.values.updatesClick ?? "panel"    // left-click: "panel" or "terminal" (the update command, as before)
+    readonly property bool updatesNews: Settings.values.updatesNews ?? true    // the panel lists Arch news newer than your last full upgrade (the feed is read at most every 3 h)
+    readonly property int updatesPanelWidth: Settings.values.updatesPanelWidth ?? 360
+    readonly property bool updatesFlatpak: Settings.values.updatesFlatpak ?? true    // count Flatpak updates too (and run `flatpak update` after the command)
+    // Named in the tip when they're among the updates (globs): things this
+    // setup leans on (Quickshell's quirks, the pinned kernel and firmware,
+    // the speaker fix's hand-placed UCM file).
+    // The panel's Update asks again, listing them, when any of them is there.
+    readonly property var updatesHeadsUp: Settings.values.updatesHeadsUp ?? ["quickshell*", "mango*", "linux", "linux-*", "mesa", "vulkan-radeon", "*firmware*", "amd-ucode", "alsa-ucm-conf", "pipewire*", "wireplumber", "qt6-base", "qt6-declarative", "qt6-wayland"]
 
     // ---- System stats on the bar ---------------------------------------------------------
     // Only read while one is on the bar. Click one: the System popup.
@@ -182,6 +204,18 @@ Singleton {
     readonly property real nowPlayingOpacity: Settings.values.nowPlayingOpacity ?? 0.84    // glass of the open card
     readonly property int nowPlayingRadius: Settings.values.nowPlayingRadius ?? radiusPanel
     readonly property int nowPlayingSeekStep: Settings.values.nowPlayingSeekStep ?? 5    // s per ←/→ press
+
+    // ---- Lyrics (services/Lyrics.qml, from lrclib.net) ----
+    readonly property bool lyricsEnabled: Settings.values.lyricsEnabled ?? true    // off: never looked up, nothing shown
+    readonly property bool lyricsInCard: Settings.values.lyricsInCard ?? true    // under the song in the Now Playing card (its lyrics button)
+    readonly property bool lyricsInBar: Settings.values.lyricsInBar ?? true    // the line being sung in place of the song's name (timed lyrics only)
+    readonly property bool lyricsOnDesktop: Settings.values.lyricsOnDesktop ?? true    // the song's lines gliding by in the desktop's music card (timed lyrics only)
+    readonly property int lyricsDesktopHeight: Settings.values.lyricsDesktopHeight ?? 150    // the desktop card's lyrics, px
+    readonly property real lyricsDesktopBlur: Settings.values.lyricsDesktopBlur ?? 3    // px of blur where its lines fade out at the top and bottom (0 = none)
+    readonly property int lyricsBarWidth: Settings.values.lyricsBarWidth ?? 240    // the bar's line, px (fixed, so the island doesn't move per line)
+    readonly property int lyricsCardHeight: Settings.values.lyricsCardHeight ?? 176    // the card's lyrics, px
+    readonly property real lyricsOffset: Settings.values.lyricsOffset ?? 0    // s; plus = lines come earlier
+    readonly property bool lyricsBrowsers: Settings.values.lyricsBrowsers ?? false    // also what plays in a browser (its video titles go to lrclib.net too)
 
     // ---- Live activities ----------------------------------------------------------
     // Moments: the middle island grows for a couple of seconds to say what
@@ -295,11 +329,30 @@ Singleton {
     readonly property int ccSliderHeight: Settings.values.ccSliderHeight ?? 38
     readonly property bool ccAppVolumes: Settings.values.ccAppVolumes ?? true    // a slider for each app playing sound
 
+    // ---- Control center tiles, hotspot, song (control/ControlTiles.qml) ----------------
+    // The tiles shown, in order: ids from control/ControlTiles.qml. Edit in
+    // the control center (Edit under the tiles) or Settings → Control center.
+    readonly property var controlTiles: Settings.values.controlTiles ?? ["wifi", "bluetooth", "silent", "awake", "nightlight", "darkmode", "screenshot", "record", "power", "rotate", "phone", "tailscale"]
+    // The hotspot's network name; "" = NetworkManager's own (Hotspot-<this computer's name>).
+    // Its password is NetworkManager's (made once, kept in its profile), never here.
+    readonly property string hotspotName: Settings.values.hotspotName ?? ""
+    // Name that song listens to "output" (what the laptop plays: the default
+    // output's monitor) or "mic"; a right click on the tile takes the other.
+    readonly property string songSource: Settings.values.songSource ?? "output"
+    readonly property int songListenSeconds: Settings.values.songListenSeconds ?? 12    // gives up after this (three tries)
+
     // ---- Phone (KDE Connect, services/Phone.qml) ---------------------------------------
     readonly property bool ccPhone: Settings.values.ccPhone ?? true    // the Phone tile in the control center (once KDE Connect is installed)
     readonly property string phoneDevice: Settings.values.phoneDevice ?? ""    // which phone: its name; "" = the first paired one
     readonly property int phoneRefresh: Settings.values.phoneRefresh ?? 30    // s between checks while the bar item or the control center shows it
     readonly property int phoneBatteryWarn: Settings.values.phoneBatteryWarn ?? 15    // % under which the bar item turns red
+
+    // ---- Tailscale (services/Tailscale.qml) ---------------------------------------------
+    readonly property bool ccTailscale: Settings.values.ccTailscale ?? true    // the Tailscale tile in the control center (once it's installed)
+    readonly property int tailscalePollOpen: Settings.values.tailscalePollOpen ?? 5    // s between checks while the control center is open
+    readonly property int tailscalePollBar: Settings.values.tailscalePollBar ?? 60    // s between checks while the bar item is on the bar
+    readonly property int tailscaleHideAfterDays: Settings.values.tailscaleHideAfterDays ?? 30    // offline longer than this: folded under "older devices" (0 = never)
+    readonly property string tailscaleCopy: Settings.values.tailscaleCopy ?? "ip"    // what a click on a device copies: "ip" | "name" (MagicDNS); right click: the other
 
     // ---- Dock --------------------------------------------------------------------------
     // Glass dock at the bottom middle: pinned apps, then running ones.
@@ -342,6 +395,13 @@ Singleton {
     readonly property int backdropBlur: Settings.values.backdropBlur ?? 64
     readonly property int backdropDecodeWidth: 640    // the wallpaper copy they blur (px wide)
     readonly property real sessionOpacity: Settings.values.sessionOpacity ?? 0.8    // glass of the card
+    // Restart to Windows (services/WindowsBoot.qml): a sixth button, only
+    // when the firmware has a "Windows Boot Manager" entry; it asks for the
+    // password, sets that entry for the next start only, and restarts.
+    readonly property bool sessionWindows: Settings.values.sessionWindows ?? true
+    // Switch to GNOME (scripts/switch-session.sh): logs out with GNOME
+    // already picked on the login screen. Only while GNOME is installed.
+    readonly property bool sessionGnome: Settings.values.sessionGnome ?? true
 
     // ---- Apps at login (services/AppRestore.qml) -------------------------------------
     // The apps open when you logged out or shut down come back at the next
@@ -392,6 +452,7 @@ Singleton {
     readonly property var desktopWidgets: Settings.values.desktopWidgets ?? ["music"]
     readonly property string desktopWidgetsSide: Settings.values.desktopWidgetsSide ?? "auto"    // auto | beside | stacked (above the clock at the bottom, under it elsewhere)
     readonly property real desktopWidgetOpacity: Settings.values.desktopWidgetOpacity ?? 0.8    // their glass (mango doesn't blur behind the desktop)
+    readonly property real desktopMusicTint: Settings.values.desktopMusicTint ?? 0.55    // the cover's colors in the music card's glass (0 = plain glass)
 
     // ---- Night light -----------------------------------------------------------------
     // Warmer colors, by wlsunset (sudo pacman -S wlsunset). "off", "on" (all
@@ -421,9 +482,20 @@ Singleton {
     readonly property real screenshotDim: Settings.values.screenshotDim ?? 0.45    // darkness outside the selection
     readonly property bool screenshotConfirm: Settings.values.screenshotConfirm ?? false    // true: adjust the region, then Enter
     readonly property bool screenshotNotify: Settings.values.screenshotNotify ?? true
+    // Edit (E in the overlay, and the notification's Edit): "markup" draws on
+    // it right in the overlay (pen, arrow, box, text, blur); "swappy" opens
+    // swappy after saving instead.
+    readonly property string screenshotEditor: Settings.values.screenshotEditor ?? "markup"
+    readonly property int screenshotPixelSize: Settings.values.screenshotPixelSize ?? 16    // the blur's blocks, in real pixels
     // Super+Shift+T: copy the text in a region (tesseract). "auto" = English,
     // plus Vietnamese once tesseract-data-vie is installed; or e.g. "eng+vie".
     readonly property string ocrLanguages: Settings.values.ocrLanguages ?? "auto"
+    // Scan a QR code (Q), Google Lens (L) and Translate (D) in the
+    // screenshot overlay (services/Screenshot.qml, services/Translator.qml).
+    // translatePair "vi:en": your language, then the other one; text that
+    // looks like yours is translated to the other, anything else to yours.
+    // The text read off the screen goes to Google Translate, over HTTPS.
+    readonly property string translatePair: Settings.values.translatePair ?? "vi:en"
 
     // ---- Screen recording --------------------------------------------------------------
     // The Record tile, Super+Shift+R (screen) / Super+Alt+R (region): the
@@ -480,6 +552,15 @@ Singleton {
     readonly property int presenceAwayFor: Settings.values.presenceAwayFor ?? 10    // s with nobody there: lock
     readonly property int presenceDimHold: Settings.values.presenceDimHold ?? 600    // the dim waits at most this long for someone looking
 
+    // ---- Auto brightness (services/AutoBrightness.qml) -------------------------------------
+    // The screen follows the light sensor, and learns from the changes you
+    // make yourself (kept in ~/.local/state/mine-shell/autobright.json).
+    readonly property bool autoBrightness: Settings.values.autoBrightness ?? false
+    readonly property real autoBrightnessMin: Settings.values.autoBrightnessMin ?? 0.1    // never darker than this unless you make it darker yourself (never under 5%)
+    readonly property real autoBrightnessMax: Settings.values.autoBrightnessMax ?? 1    // never brighter than this unless you make it brighter yourself
+    readonly property real autoBrightnessGlide: Settings.values.autoBrightnessGlide ?? 4    // s a change takes (a glide in 1% steps)
+    readonly property real autoBrightnessHold: Settings.values.autoBrightnessHold ?? 10    // min it leaves your own change alone (or until the light halves or doubles)
+
     // ---- Battery care (services/BatteryCare.qml) -----------------------------------------
     readonly property bool batterySaverOnBattery: Settings.values.batterySaverOnBattery ?? true    // unplugged: Power saver; plugged in: back to before
     readonly property int batteryWarnLow: Settings.values.batteryWarnLow ?? 15    // % for the "Battery low" notification (0 = off)
@@ -488,6 +569,13 @@ Singleton {
     // Headphones, mouse, game pad… (services/Peripherals.qml): under this %
     // a notification says so, once; the bar item turns red (0 = off).
     readonly property int deviceBatteryWarn: Settings.values.deviceBatteryWarn ?? 15
+
+    // ---- Battery popup (services/BatteryHealth.qml, control/BatteryPopup.qml) ---------------
+    // A click on the bar's battery: the charge over the last hours (UPower's
+    // history) and the battery's health (wear, cycles, capacity now / new).
+    readonly property bool batteryPopup: Settings.values.batteryPopup ?? true    // false: the click opens the control center, as before
+    readonly property int batteryPopupWidth: Settings.values.batteryPopupWidth ?? 330
+    readonly property int batteryGraphHours: Settings.values.batteryGraphHours ?? 24    // how far back the graph goes
 
     // ---- Focus timer (services/FocusTimer.qml, "Focus timer" in Bar items) ------------------
     readonly property int focusMinutes: Settings.values.focusMinutes ?? 25    // work
@@ -625,6 +713,13 @@ Singleton {
     // scripts/tablet-keyboard.sh run with sudo (Settings copies the command)
     // and a new login; the hardware itself may still cut them past ~180°.
     readonly property bool tabletKeepKeyboard: Settings.values.tabletKeepKeyboard ?? false
+
+    // ---- USB drives (services/Drives.qml, "USB drives" in Bar items) -------------------------
+    // A notification when one is plugged in (Open / Eject), and the bar item
+    // with its popup while one is there.
+    readonly property bool drivesWatch: Settings.values.drivesWatch ?? true    // watch for them at all (udisksctl monitor)
+    readonly property bool drivesNotify: Settings.values.drivesNotify ?? true    // "USB drive plugged in"
+    readonly property int drivesPopupWidth: Settings.values.drivesPopupWidth ?? 330
 
     // A color with a new alpha (0-1).
     function alpha(c: color, a: real): color {

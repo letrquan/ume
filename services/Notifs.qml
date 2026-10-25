@@ -228,6 +228,10 @@ Singleton {
         live[e.key] = n;
         watch(e, n);
         list = fresh ? [e].concat(list) : list.slice();
+        // A transient one that didn't pop up (Do Not Disturb, a panel open):
+        // in the list for a minute, then gone (transientSweep).
+        if (e.transient && !e.popup)
+            transientSweep.restart();
         revision++;
         limitPopups();
         trim();
@@ -289,8 +293,10 @@ Singleton {
         if (live[key] !== n)
             return;
         delete live[key];
-        // The app took it back (e.g. you read the message there).
-        if (reason === NotificationCloseReason.CloseRequested) {
+        // The app took it back (e.g. you read the message there), or a
+        // transient one (a Wi-Fi password from a QR code…) is over: it was
+        // only ever for the moment, never for the list.
+        if (reason === NotificationCloseReason.CloseRequested || find(key)?.transient) {
             list = list.filter(e => e.key !== key);
         } else {
             const e = find(key);
@@ -647,6 +653,22 @@ Singleton {
         onTriggered: root.centerMapped = false
     }
 
+    // Transient notifications that never popped up go a minute after they
+    // came (a popup one goes when its popup does, hidePopup()).
+    readonly property int transientLife: 60000
+    Timer {
+        id: transientSweep
+        interval: 5000
+        repeat: true
+        onTriggered: {
+            const now = Date.now();
+            for (const e of root.list.filter(x => x.transient && !x.popup && now - x.time >= root.transientLife))
+                root.dismiss(e.key);
+            if (!root.list.some(x => x.transient && !x.popup))
+                stop();
+        }
+    }
+
     SystemClock {
         id: clock
         precision: SystemClock.Minutes
@@ -724,7 +746,9 @@ Singleton {
         id: saveTimer
         interval: 800
         onTriggered: {
-            const keep = root.list.slice(0, Style.notifHistoryMax).map(e => ({
+            // Never a transient one: it says it isn't for keeping (a Wi-Fi
+            // password from a QR code, a one-time code).
+            const keep = root.list.filter(e => !e.transient).slice(0, Style.notifHistoryMax).map(e => ({
                 key: e.key, id: e.id, pid: e.pid, time: e.time,
                 appName: e.appName, summary: e.summary, body: e.body,
                 // Pictures sent as data only live as long as the notification.

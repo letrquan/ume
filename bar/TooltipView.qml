@@ -39,11 +39,11 @@ Item {
     // a panel, the volume OSD, a popup. The tip waits rolled up (and comes
     // back if the mouse is still there when it's gone).
     readonly property bool covered: IslandState.takenOver || IslandState.controlCovering
-        || IslandState.sysmonCovering || OsdState.mapped || VolumeState.open || Notifs.centerOpen
+        || IslandState.sysmonCovering || OsdState.mapped || VolumeState.open || UpdatesState.open || Notifs.centerOpen
         || SessionState.open || OverviewState.open || SwitcherState.open || CheatSheetState.open
 
     // 0 = rolled up into the island, 1 = out.
-    readonly property bool showing: Tooltips.shown && !covered
+    readonly property bool showing: Tooltips.shown && !covered && !BarPopupState.open    // (the battery / USB drive popups too)
     property real t: showing ? 1 : 0
     Behavior on t {
         NumberAnimation {

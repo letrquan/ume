@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Services.UPower
 import qs.common
 import qs.services
@@ -34,7 +35,17 @@ Clickable {
         : root.device?.state === UPowerDeviceState.FullyCharged ? " · full" : "")
     tipDetail: "Power mode: " + (PowerProfiles.profile === PowerProfile.PowerSaver ? "Saver"
                                  : PowerProfiles.profile === PowerProfile.Performance ? "Performance" : "Balanced")
-    onClicked: ControlState.toggle("main")
+    // Click: the battery popup right under it (charge over the last hours,
+    // health; Style.batteryPopup, off = the control center as before);
+    // right click: the control center.
+    function route(button) {
+        const win = root.QsWindow.window;
+        if (button === Qt.LeftButton && Style.batteryPopup)
+            BarPopupState.toggle("battery", win?.screen?.name ?? "", win ? win.itemRect(root) : Qt.rect(0, 0, 0, 0));
+        else
+            ControlState.toggle("main");
+    }
+    onClicked: mouse => route(mouse.button)
 
     Reveal {
         anchors.verticalCenter: parent.verticalCenter

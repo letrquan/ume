@@ -15,6 +15,8 @@ Text {
     }
 
     text: name
+    // A name is only a name (an icon font ligature), never markup.
+    textFormat: Text.PlainText
     color: Colors.textOnSurface
     font.family: Style.iconFont
     font.pixelSize: size

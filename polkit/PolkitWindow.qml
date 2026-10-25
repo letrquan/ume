@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import qs.common
+import qs.services
 
 // The password dialog window. One window (on the screen mango picks),
 // taking the keyboard so you can type the password right away. It gets the
@@ -23,6 +24,35 @@ PanelWindow {
 
     Component.onCompleted: {
         view.focusField();
+    }
+
+    // A new request in the same window (one queued behind the last, or a
+    // second one right after): an empty field, never the last password.
+    onFlowChanged: {
+        view.field.text = "";
+        state_ = "idle";
+        view.focusField();
+    }
+
+    // Who asked, when the shell can tell. Its own two admin actions run
+    // pkexec with a fixed command, and polkit's message shows that command
+    // between quotes (whole, it's short). Any other request to run
+    // something as root says it isn't from the shell, so a look-alike can't
+    // pass for Updates.
+    function quoted(message, command) {
+        const i = message.indexOf(command);
+        return i > 0 && message.indexOf(command, i + 1) < 0
+            && /[`'"‘“«]/.test(message.charAt(i - 1)) && /['"’”»]/.test(message.charAt(i + command.length));
+    }
+    readonly property string origin: {
+        const f = root.flow;
+        if (!f || f.actionId !== "org.freedesktop.policykit.exec")
+            return "";
+        if (UpdateRun.askingPassword && quoted(f.message, UpdateRun.rootCommand))
+            return "From Updates (this shell)";
+        if (WindowsBoot.busy && quoted(f.message, WindowsBoot.rootCommand))
+            return "From Restart to Windows (this shell)";
+        return "Not from this shell: check the command";
     }
 
     anchors {
@@ -71,6 +101,10 @@ PanelWindow {
             view.field.text = "";
             view.focusField();
         }
+        function onIsCompletedChanged() {
+            if (root.flow?.isCompleted)
+                view.field.text = "";
+        }
         function onIsResponseRequiredChanged() {
             // polkit asks again after a wrong password.
             if (root.flow?.isResponseRequired && root.state_ === "busy")
@@ -86,6 +120,7 @@ PanelWindow {
         message: root.flow?.message ?? ""
         iconName: root.flow?.iconName ?? ""
         actionId: root.flow?.actionId ?? ""
+        origin: root.origin
         // Whose password polkit wants: the identity it picked (the first
         // admin it lists, not always you), by login name (the full name is
         // free text, any account could be called "root" there).

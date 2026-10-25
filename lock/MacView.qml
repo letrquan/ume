@@ -213,7 +213,8 @@ Item {
 
         MacNowPlaying {
             id: music
-            property real shownAmount: wanted ? 1 : 0
+            // Settings → Lock screen → Now playing (both styles).
+            property real shownAmount: wanted && Style.lockShowMedia ? 1 : 0
             anchors.horizontalCenter: parent.horizontalCenter
             y: clock.y + clock.height + 22
             source: background

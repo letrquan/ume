@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell.Services.Mpris
 import Quickshell.Widgets
 import qs.common
 
@@ -14,11 +13,8 @@ Item {
     // 0 → 1 as the picture behind gets bright: a darker card.
     property real boost: 0
 
-    // The first player that plays, else the first one at all.
-    readonly property var player: {
-        const list = Mpris.players.values;
-        return list.find(p => p.isPlaying) ?? list[0] ?? null;
-    }
+    // The player the whole shell shows (common/Players.qml).
+    readonly property var player: Players.active
     readonly property bool hasMedia: player !== null && (player.trackTitle ?? "") !== ""
     readonly property bool playing: player?.isPlaying ?? false
     property bool seen: false
@@ -58,7 +54,7 @@ Item {
         Image {
             id: art
             anchors.fill: parent
-            source: root.player?.trackArtUrl ?? ""
+            source: Players.art(root.player)
             sourceSize: Qt.size(96, 96)
             fillMode: Image.PreserveAspectCrop
             asynchronous: true

@@ -38,8 +38,8 @@ Item {
     Image {
         id: picture
         anchors.fill: parent
-        source: Colors.wallpaper !== "" ? "file://" + Colors.wallpaper : ""
-        sourceSize.width: Style.backdropDecodeWidth
+        source: SmallWallpaper.source
+        sourceSize: SmallWallpaper.size
         fillMode: Image.PreserveAspectCrop
         visible: false
     }

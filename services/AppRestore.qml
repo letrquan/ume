@@ -406,7 +406,8 @@ Singleton {
     function notify(names) {
         const n = names.length;
         const cmd = ["notify-send", "-a", "Apps", "-i", "view-restore", "--",
-                     "Reopened " + n + (n === 1 ? " app" : " apps"), names.join(", ")];
+                     "Reopened " + n + (n === 1 ? " app" : " apps"),
+                     names.join(", ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")];
         if (dryRun)
             console.log("restore (dry run):", JSON.stringify(cmd));
         else

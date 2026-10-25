@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   ImageMagick's rules for the shell's scripts that open pictures other apps
-  can drop (scripts/wallpaper-thumbs.sh, greeter-sync.sh, ocr.sh). They point
-  MAGICK_CONFIGURE_PATH at this folder.
+  can drop (scripts/wallpaper-thumbs.sh, greeter-sync.sh, ocr.sh, qr-scan.sh,
+  lens.sh). They point MAGICK_CONFIGURE_PATH at this folder.
 
   ImageMagick reads every policy.xml it finds, this one first, then
   /etc/ImageMagick-7/policy.xml; a later rule wins. The system one has no

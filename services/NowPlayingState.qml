@@ -2,7 +2,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Services.Mpris
 import qs.common
 
 // The Now Playing card (click the song in the middle island): whether it's
@@ -21,15 +20,13 @@ Singleton {
 
     readonly property bool dryRun: Quickshell.env("MINE_NOWPLAYING_DRYRUN") === "1"
 
-    // The player shown: the one picked in the card (by its D-Bus name), else
-    // the bar's (the first playing, else the first one at all).
-    property string chosen: ""
-    readonly property var players: Mpris.players.values
-    readonly property var player: players.find(p => p.dbusName === chosen)
-        ?? players.find(p => p.isPlaying) ?? players[0] ?? null
+    // The player shown: the whole shell's (common/Players.qml). Picking one
+    // of the card's player chips makes it the shell's, the bar's too.
+    readonly property var players: Players.list
+    readonly property var player: Players.active
 
     function choose(p) {
-        chosen = p?.dbusName ?? "";
+        Players.pick(p);
     }
 
     function toggle() {
@@ -47,7 +44,6 @@ Singleton {
         CalendarState.close();
         if (Wallpaper.pickerOpen)
             Wallpaper.setPicker(false);
-        chosen = "";                    // opens on what the bar shows
         unmap.stop();
         // open first: the window is created the moment `mapped` turns on,
         // and must see the card open already.

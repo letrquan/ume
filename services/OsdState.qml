@@ -169,8 +169,9 @@ Singleton {
         // The volume popup is open: the change is already on screen there.
         if (k !== "brightness" && VolumeState.open)
             return;
-        // Dimming when idle (services/Idle.qml) changes it quietly.
-        if (k === "brightness" && Idle.quietBrightness)
+        // Dimming when idle (services/Idle.qml) and auto brightness
+        // (services/AutoBrightness.qml) change it quietly.
+        if (k === "brightness" && (Idle.quietBrightness || AutoBrightness.quietBrightness))
             return;
         if (Math.abs(prev.value - value) < 0.0005 && prev.muted === muted)
             return;

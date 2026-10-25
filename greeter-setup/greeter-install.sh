@@ -52,6 +52,8 @@ if [ ! -f /etc/pam.d/greetd.mine-backup ]; then
     cp -p /etc/pam.d/greetd /etc/pam.d/greetd.mine-backup
     echo "package version kept as /etc/pam.d/greetd.mine-backup"
 fi
+# (Real files only: install would copy what a link points at.)
+[ ! -L "$here/greetd.pam" ] && [ ! -L "$here/config-test.toml" ] || { echo "greetd.pam or config-test.toml is a link; not installing."; exit 1; }
 install -m 644 "$here/greetd.pam" /etc/pam.d/greetd
 
 step "greetd settings: TEST mode on VT 7 (not enabled, not started)"

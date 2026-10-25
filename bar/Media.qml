@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell.Services.Mpris
 import Quickshell.Widgets
 import qs.common
 import qs.services
@@ -9,24 +8,68 @@ import qs.services
 // the little cover, or a middle click: play/pause; right click: next;
 // scroll: next/previous. With Style.nowPlayingEnabled off, a click plays or
 // pauses as before. Hovering the island shows previous/next buttons. Little
-// bars dance to the music while it plays (MusicBars.qml).
+// bars dance to the music while it plays (MusicBars.qml). With timed lyrics
+// (Style.lyricsInBar) the line being sung shows instead of the name.
 Reveal {
     id: root
 
     // Set by the bar: the mouse is over the island this sits in.
     property bool islandHovered: false
 
-    // The first player that's playing, else the first one at all.
-    readonly property var player: {
-        const list = Mpris.players.values;
-        return list.find(p => p.isPlaying) ?? list[0] ?? null;
-    }
+    // The player the whole shell shows (common/Players.qml).
+    readonly property var player: Players.active
     readonly property bool playing: player?.isPlaying ?? false
     readonly property string title: player?.trackTitle ?? ""
     readonly property string artist: player?.trackArtist ?? ""
 
+    readonly property string song: artist !== "" ? title + "  ·  " + artist : title
+
     anchors.verticalCenter: parent?.verticalCenter
     shown: title !== ""
+
+    // ---- Lyrics (services/Lyrics.qml) ---------------------------------------------------
+    // With timed lyrics the song's name gives way to the line being sung,
+    // in a slot of fixed width (Style.lyricsBarWidth): the island changes
+    // size when the slot opens or closes, never per line. The slot stays
+    // open into the next song while its lyrics are looked up (showing its
+    // name), so a run of songs with lyrics doesn't move the island at all.
+    property bool lyricMode: false
+    readonly property bool lyricsHere: Style.lyricsEnabled && Style.lyricsInBar && Lyrics.player === player
+    readonly property string lineText: lyricMode && lyricsHere && Lyrics.synced && Lyrics.index >= 0
+        ? (Lyrics.line !== "" ? Lyrics.line : "♪") : song
+
+    function updateMode() {
+        // Under a card (the island is hidden): keep its size until it's back.
+        if (IslandState.takenOver)
+            return;
+        if (lyricsHere && Lyrics.synced)
+            lyricMode = true;
+        else if (!lyricsHere || !Lyrics.pending)
+            lyricMode = false;
+    }
+    // A moment later (Qt.callLater), once Lyrics' bindings agree on the
+    // new song (synced and pending change in the same instant).
+    onLyricsHereChanged: Qt.callLater(updateMode)
+    Connections {
+        target: Lyrics
+        function onSyncedChanged() {
+            Qt.callLater(root.updateMode);
+        }
+        function onPendingChanged() {
+            Qt.callLater(root.updateMode);
+        }
+    }
+    Connections {
+        target: IslandState
+        function onTakenOverChanged() {
+            Qt.callLater(root.updateMode);
+        }
+    }
+    Component.onCompleted: {
+        Lyrics.barViews++;
+        updateMode();
+    }
+    Component.onDestruction: Lyrics.barViews--
 
     Row {
         Divider {}
@@ -67,7 +110,7 @@ Reveal {
                 Image {
                     id: art
                     anchors.fill: parent
-                    source: root.player?.trackArtUrl ?? ""
+                    source: Players.art(root.player)
                     sourceSize: Qt.size(40, 40)
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
@@ -97,13 +140,29 @@ Reveal {
                 }
             }
 
-            StyledText {
+            // The song's name, or (lyricMode) the line being sung in a
+            // slot of fixed width.
+            Item {
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(implicitWidth, Style.mediaMaxWidth)
-                rightPadding: 4
-                text: root.artist !== "" ? root.title + "  ·  " + root.artist : root.title
-                elide: Text.ElideRight
-                color: root.playing ? Colors.textOnSurface : Colors.textOnSurfaceVariant
+                width: root.lyricMode ? Style.lyricsBarWidth : songText.width
+                height: songText.implicitHeight
+
+                StyledText {
+                    id: songText
+                    width: Math.min(implicitWidth, Style.mediaMaxWidth)
+                    visible: !root.lyricMode
+                    rightPadding: 4
+                    text: root.song
+                    elide: Text.ElideRight
+                    color: root.playing ? Colors.textOnSurface : Colors.textOnSurfaceVariant
+                }
+                LyricLine {
+                    width: Style.lyricsBarWidth - 4
+                    height: parent.height
+                    visible: root.lyricMode
+                    text: root.lineText
+                    color: root.playing ? Colors.textOnSurface : Colors.textOnSurfaceVariant
+                }
             }
 
             // Bars dancing to the music (cava), while it plays.

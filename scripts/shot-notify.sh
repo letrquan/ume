@@ -1,6 +1,9 @@
 #!/bin/sh
 # Tell about a new screenshot, with the picture, and act on the answer:
-# clicking the notification opens it, Edit opens swappy, Delete removes it.
+# clicking the notification opens it, Edit marks it up in the shell (the
+# screenshot overlay's markup, over IPC; swappy when the shell says no,
+# Style.screenshotEditor "swappy" among others, or isn't there), Delete
+# removes it.
 #   shot-notify.sh <file> [quiet]
 # quiet: a live activity has shown it already, so the notification goes
 # straight to the list (x-mine-quiet), still with its buttons.
@@ -23,8 +26,21 @@ run() {
     fi
 }
 
+# The shell this came from (scripts/ is in it).
+shell=$(cd "$(dirname "$0")/.." && pwd)
+
+edit() {
+    if [ "$MINE_SHOT_DRYRUN" = 1 ]; then
+        echo "shot-notify (dry run): qs ipc -p $shell call screenshot edit $file (swappy unless it prints ok)"
+        return
+    fi
+    # Prints "ok" when the markup opens; anything else (no such function,
+    # no shell running, busy, the swappy setting): swappy.
+    [ "$(qs ipc -p "$shell" call screenshot edit "$file" 2>/dev/null)" = ok ] || run swappy -f "$file"
+}
+
 case "$action" in
     default) run xdg-open "$file" ;;
-    edit) run swappy -f "$file" ;;
+    edit) edit ;;
     delete) rm -f -- "$file" ;;
 esac

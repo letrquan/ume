@@ -195,6 +195,7 @@ Item {
                 }
 
                 StyledText {
+                    id: bodyText
                     width: parent.width
                     text: card.e.body
                     visible: text !== ""
@@ -205,6 +206,17 @@ Item {
                     maximumLineCount: card.popup ? Style.notifBodyLines : 6
                     elide: Text.ElideRight
                     onLinkActivated: link => { if (/^https?:\/\//i.test(link)) Qt.openUrlExternally(link); }
+                }
+
+                // Where a link really goes, while the pointer is on it (its
+                // words can say anything, "Your bank" included).
+                StyledText {
+                    width: parent.width
+                    visible: text !== ""
+                    text: bodyText.hoveredLink
+                    role: "caption"
+                    color: Colors.outline
+                    elide: Text.ElideMiddle
                 }
 
                 // The app's buttons (only while the app still listens).

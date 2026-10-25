@@ -1,7 +1,6 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import qs.common
 
@@ -14,10 +13,8 @@ Singleton {
 
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property var source: Pipewire.defaultAudioSource
-    readonly property var player: {
-        const list = Mpris.players.values;
-        return list.find(p => p.isPlaying) ?? list[0] ?? null;
-    }
+    // The player the whole shell shows (common/Players.qml).
+    readonly property var player: Players.active
 
     function volume(step) {
         if (!sink?.audio)
@@ -42,6 +39,8 @@ Singleton {
     function brightness(step) {
         if (!Brightness.ready)
             return;
+        // Yours: auto brightness stops gliding and learns it.
+        AutoBrightness.userSet();
         Brightness.set(Math.max(0.01, Math.min(1, Brightness.value + step)));
         OsdState.show("brightness");
     }

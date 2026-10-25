@@ -17,7 +17,8 @@ import qs.common
 //
 // MINE_RECORD_DRYRUN=1 (tests): wf-recorder isn't run, the command is
 // printed, and a stand-in process "records" until stop() interrupts it.
-// MINE_RECORD_DIR: another folder instead of Style.recordDir.
+// MINE_RECORD_DIR: another folder instead of Style.recordDir;
+// MINE_RECORD_WORKDIR: another folder to record into (see workDir).
 Singleton {
     id: root
 
@@ -40,6 +41,21 @@ Singleton {
     readonly property string dir: (Quickshell.env("MINE_RECORD_DIR") || Style.recordDir)
         .replace(/^~(?=\/|$)/, Quickshell.env("HOME"))
     readonly property string gpu: "/dev/dri/renderD128"
+    // Where the file is made while recording, then moved to `dir` when it
+    // ends (`saving`): a folder only the shell uses (not ~/Videos, which
+    // Chrome's Flatpak can write to), so a link someone left at the file's
+    // name is replaced by the move, never written through. The same disk
+    // as ~/Videos, so the move is instant.
+    readonly property string workDir: Quickshell.env("MINE_RECORD_WORKDIR")
+        || (Quickshell.env("HOME") + "/.cache/mine-shell/recording")
+    property string workFile: ""
+    // A recording the shell never got to move (it was restarted or crashed
+    // while recording): into `dir` at start, never over an existing name.
+    Component.onCompleted: {
+        if (!dryRun)
+            Quickshell.execDetached(["sh", "-c", 'for f in "$1"/Recording_*.mp4; do [ -f "$f" ] || continue; '
+                + 'mkdir -p -- "$2" && mv -n -- "$f" "$2/"; done; true', "sh", workDir, dir]);
+    }
 
     // ---- Starting and stopping ---------------------------------------------------------------
     function toggle() {
@@ -123,8 +139,10 @@ Singleton {
     }
 
     function begin(where) {
-        const out = dir + "/Recording_" + Qt.formatDateTime(new Date(), "yyyy-MM-dd_HH-mm-ss") + ".mp4";
-        const cmd = commandFor(where, out);
+        const name = "Recording_" + Qt.formatDateTime(new Date(), "yyyy-MM-dd_HH-mm-ss") + ".mp4";
+        const out = dir + "/" + name;
+        workFile = workDir + "/" + name;
+        const cmd = commandFor(where, workFile);
         file = out;
         elapsed = 0;
         lastError = "";
@@ -136,7 +154,7 @@ Singleton {
             proc.command = ["sh", "-c", "trap 'exit 0' INT; while :; do sleep 0.1; done"];
         } else {
             // mkdir first; exec keeps the same process, so SIGINT reaches wf-recorder.
-            proc.command = ["sh", "-c", 'mkdir -p "$1" && shift && exec "$@"', "sh", dir].concat(cmd);
+            proc.command = ["sh", "-c", 'mkdir -p "$1" && rm -f -- "$2" && shift 2 && exec "$@"', "sh", workDir, workFile].concat(cmd);
         }
         proc.running = true;
         starting = false;
@@ -151,12 +169,29 @@ Singleton {
         Sounds.recording(false);
         if (!asked && code !== 0)
             console.warn("record: wf-recorder stopped by itself (" + code + "):", lastError);
-        if (dryRun)
+        if (dryRun) {
             console.log("record (dry run): saved", out, "after", seconds, "s, exit", code, asked ? "(stopped)" : "(by itself)");
-        else
-            Quickshell.execDetached(["sh", Quickshell.shellDir + "/scripts/record-notify.sh", out, String(seconds), asked ? "" : lastError]);
-        // Once `recording` is false too.
-        Qt.callLater(() => root.done(out));
+            // Once `recording` is false too.
+            Qt.callLater(() => root.done(out));
+            return;
+        }
+        // Into ~/Videos/Recordings, then the notification and done().
+        saving.out = out;
+        saving.notify = ["sh", Quickshell.shellDir + "/scripts/record-notify.sh", out, String(seconds), asked ? "" : lastError];
+        saving.command = ["sh", "-c", '[ -e "$1" ] || exit 0; mkdir -p -- "$(dirname -- "$2")" && mv -f -- "$1" "$2"', "sh", workFile, out];
+        saving.running = true;
+    }
+
+    Process {
+        id: saving
+        property string out: ""
+        property var notify: []
+        onExited: code => {
+            if (code !== 0)
+                console.warn("record: couldn't move the recording to", out);
+            Quickshell.execDetached(notify);
+            root.done(out);
+        }
     }
 
     signal done(string file)

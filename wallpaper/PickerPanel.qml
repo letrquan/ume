@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell.Widgets
 import qs.common
 import qs.services
 
@@ -198,44 +197,55 @@ Item {
                     NumberAnimation { duration: Motion.fast; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.fastSpatial }
                 }
 
-                ClippingRectangle {
+                // The picture with rounded corners, drawn straight from its
+                // texture (RoundedTexture). A ClippingRectangle made two
+                // offscreen copies of every thumb as the picker opened.
+                Rectangle {
                     anchors.fill: parent
                     radius: root.thumbRadius
                     color: Colors.surfaceContainerHigh
+                }
+                Image {
+                    id: thumbPicture
+                    anchors.fill: parent
+                    source: cell.thumb
+                    sourceSize: Qt.size(352, 220)
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    visible: false
+                }
+                RoundedTexture {
+                    anchors.fill: parent
+                    source: thumbPicture
+                    radius: root.thumbRadius
+                    opacity: thumbPicture.status === Image.Ready ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+                }
 
-                    Image {
-                        anchors.fill: parent
-                        source: cell.thumb
-                        sourceSize: Qt.size(352, 220)
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                        opacity: status === Image.Ready ? 1 : 0
-                        Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+                // Name, on hover. Same corners as the picture (the top ones
+                // are in the gradient's see-through end).
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: 30
+                    radius: root.thumbRadius
+                    opacity: mouse.containsMouse || cell.focused ? 1 : 0
+                    gradient: Gradient {
+                        GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0) }
+                        GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.6) }
                     }
+                    Behavior on opacity { NumberAnimation { duration: Motion.fast } }
 
-                    // Name, on hover.
-                    Rectangle {
+                    StyledText {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        height: 30
-                        opacity: mouse.containsMouse || cell.focused ? 1 : 0
-                        gradient: Gradient {
-                            GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0) }
-                            GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.6) }
-                        }
-                        Behavior on opacity { NumberAnimation { duration: Motion.fast } }
-
-                        StyledText {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            anchors.margins: 8
-                            text: Wallpaper.label(cell.modelData).split("  ·  ").pop()
-                            role: "label"
-                            color: "white"
-                            elide: Text.ElideRight
-                        }
+                        anchors.margins: 8
+                        text: Wallpaper.label(cell.modelData).split("  ·  ").pop()
+                        role: "label"
+                        color: "white"
+                        elide: Text.ElideRight
                     }
                 }
 

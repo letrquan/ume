@@ -23,6 +23,7 @@ Singleton {
         { name: "clock", label: "Clock", icon: "schedule", desc: "Click: calendar and weather" },
         { name: "media", label: "Now playing", icon: "music_note", desc: "Song and controls, while something plays" },
         { name: "tray", label: "Tray icons", icon: "widgets", desc: "Discord, Steam, …" },
+        { name: "updates", label: "Updates", icon: "deployed_code_update", desc: "How many packages wait (repos, AUR, Flatpak), while some do; click: the updates panel (or a terminal), right click: check now" },
         { name: "network", label: "Network", icon: "wifi", desc: "Wi-Fi or wired" },
         { name: "bluetooth", label: "Bluetooth", icon: "bluetooth", desc: "" },
         { name: "volume", label: "Volume", icon: "volume_up", desc: "Click: volume popup, scroll to change" },
@@ -34,6 +35,7 @@ Singleton {
         { name: "focus", label: "Focus timer", icon: "timer", desc: "Click: start or pause, right click: stop, scroll: longer or shorter" },
         { name: "devices", label: "Device batteries", icon: "headphones", desc: "Headphones, mouse, game pad…: their battery, while connected" },
         { name: "agents", label: "Claude Code", icon: "smart_toy", desc: "Sessions working (◐) and done or waiting for you (✳), while there are any; click: the one waiting longest" },
+        { name: "tailscale", label: "Tailscale", icon: "vpn_lock", desc: "Dim while it's off; hover: devices online; click: its control center page" },
         { name: "phone", label: "Phone", icon: "smartphone", desc: "Your phone's battery (KDE Connect), while one is paired; click: the Phone page" },
         { name: "keyboard", label: "On-screen keyboard", icon: "keyboard", desc: "Tap: the keyboard on the screen, for touch (it also comes up in tablet mode)" },
         { name: "privacy", label: "Privacy dots", icon: "privacy_tip", desc: "Orange: an app records the mic (click: mute), green: the camera is on, purple: the screen is shared; hover: which apps" },
@@ -42,6 +44,7 @@ Singleton {
         { name: "temperature", label: "Temperature", icon: "device_thermostat", desc: "The CPU's" },
         { name: "netspeed", label: "Network speed", icon: "arrow_downward", desc: "Download (hover: upload)" },
         { name: "disk", label: "Disk", icon: "hard_drive", desc: "How full / is" },
+        { name: "drives", label: "USB drives", icon: "usb", desc: "While a USB drive or SD card is plugged in; click: its size and free space, Open and Eject" },
         { name: "divider", label: "Divider", icon: "more_vert", desc: "A thin line between groups" }
     ]
 

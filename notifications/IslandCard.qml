@@ -346,6 +346,7 @@ Item {
                 }
 
                 StyledText {
+                    id: bodyText
                     width: parent.width
                     text: root.e?.body ?? ""
                     visible: text !== ""
@@ -356,6 +357,17 @@ Item {
                     maximumLineCount: root.hovered ? 6 : Style.notifBodyLines
                     elide: Text.ElideRight
                     onLinkActivated: link => { if (/^https?:\/\//i.test(link)) Qt.openUrlExternally(link); }
+                }
+
+                // Where a link really goes, while the pointer is on it (its
+                // words can say anything, "Your bank" included).
+                StyledText {
+                    width: parent.width
+                    visible: text !== ""
+                    text: bodyText.hoveredLink
+                    role: "caption"
+                    color: Colors.outline
+                    elide: Text.ElideMiddle
                 }
 
                 // The app's buttons: the first one filled, the rest soft.

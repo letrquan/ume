@@ -21,7 +21,8 @@ Rectangle {
         appearance: 300, bar: 255, baritems: 232, dock: 205, notifications: 25,
         activities: 55, sounds: 345, launcher: 265, panels: 180, keyboard: -1,
         wallpaper: 195, desktop: 240, screenshots: 285, recording: 12,
-        power: 145, lock: -1, calendar: 30, about: -1, search: -1
+        power: 145, lock: -1, calendar: 30, about: -1, search: -1,
+        controlcenter: 160
     })
     readonly property real hue: hues[section] ?? -1
     readonly property var source: Tc.toOklch(Colors.primary.toString())

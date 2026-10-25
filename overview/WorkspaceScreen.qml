@@ -219,7 +219,9 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: root.isNew
                 name: "add"
-                size: Math.max(24, root.height * 0.18)
+                // Only the "+" card's follows the card while it zooms: a new
+                // font size is a new layout, on every frame, for every card.
+                size: root.isNew ? Math.max(24, root.height * 0.18) : 24
                 color: "white"
                 opacity: 0.85
             }

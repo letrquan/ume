@@ -421,7 +421,7 @@ Singleton {
             if (!(name in usr)) usr[name] = $2; else if (usr[name] != $2) usr[name] = "*"
         }`
     readonly property var procCommand: ["bash", "-c",
-        "exec awk -v n=" + Math.max(1, Style.sysmonProcessCount) + " -v mode=" + procSort + " \"$0\" "
+        "exec awk -v n=" + Math.max(1, Math.round(Style.sysmonProcessCount) || 5) + " -v mode=" + (procSort === "memory" ? "memory" : "cpu") + " \"$0\" "
         + "< <(top -b -c -n 2 -d 0.4 -w 512 -e k; echo SKIP; exec top -b -c -d " + procDelay + " -w 512 -e k)", procAwk]
     // Another sort (or count): a new top. Off for a moment, then on again
     // (`running` stays a binding, so closing the popup always stops it).

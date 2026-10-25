@@ -25,6 +25,9 @@ Item {
     property string message: ""
     property string iconName: ""
     property string actionId: ""
+    // Who asked, when it's a command run as root ("From Updates (this
+    // shell)", "Not from this shell: …"); "" for everything else.
+    property string origin: ""
     // The account whose password polkit asks for (PolkitWindow passes the
     // request's own; $USER is only the preview's stand-in).
     property string userName: Quickshell.env("USER") ?? ""
@@ -160,6 +163,17 @@ Item {
                 role: "caption"
                 color: Colors.outline
                 elide: Text.ElideMiddle
+            }
+
+            StyledText {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                visible: root.origin !== ""
+                text: root.origin
+                role: "caption"
+                weight: 650
+                color: root.origin.startsWith("From ") ? Colors.primary : Colors.error
+                elide: Text.ElideRight
             }
 
             PasswordField {

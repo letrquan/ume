@@ -2,7 +2,9 @@ import QtQuick
 import qs.common
 
 // A row in a detail page: icon, name, a quiet status, and something on the
-// right (a check, a lock...). `current` gives it the accent color.
+// right (a check, a lock...). `current` gives it the accent color. With
+// `action` (an icon) and `actionText`, a small button on the right instead
+// (actionClicked; the row's own click stays the row's).
 MouseArea {
     id: root
 
@@ -10,6 +12,9 @@ MouseArea {
     property string label: ""
     property string detail: ""
     property string trailing: ""        // a Material icon name, or ""
+    property string action: ""          // a Material icon name: a button on the right
+    property string actionText: ""
+    signal actionClicked()
     property bool current: false
     property bool busy: false           // connecting: the icon's shape turns
     default property alias below: extra.data
@@ -59,7 +64,7 @@ MouseArea {
     Column {
         anchors.left: badge.right
         anchors.leftMargin: 12
-        anchors.right: trail.left
+        anchors.right: root.action !== "" ? act.left : trail.left
         anchors.rightMargin: 8
         y: root.detail !== "" ? 7 : 14
 
@@ -88,10 +93,37 @@ MouseArea {
         name: root.trailing
         size: 18
         color: Colors.textOnSurfaceVariant
-        visible: root.trailing !== ""
+        visible: root.trailing !== "" && root.action === ""
         // Glyphs are square: the size, not implicitWidth (which loops
         // through the Text's own layout).
         width: visible ? size : 0
+    }
+
+    Clickable {
+        id: act
+        anchors.right: parent.right
+        anchors.rightMargin: 6
+        anchors.verticalCenter: undefined
+        y: 8
+        implicitHeight: 32
+        padding: 10
+        visible: root.action !== ""
+        onClicked: root.actionClicked()
+
+        Icon {
+            anchors.verticalCenter: parent.verticalCenter
+            name: root.action
+            size: 18
+            color: root.current ? Colors.primary : Colors.textOnSurface
+        }
+        StyledText {
+            anchors.verticalCenter: parent.verticalCenter
+            visible: text !== ""
+            text: root.actionText
+            role: "label"
+            weight: 600
+            color: root.current ? Colors.primary : Colors.textOnSurface
+        }
     }
 
     // Extra content under the row (e.g. a password field).

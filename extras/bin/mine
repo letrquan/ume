@@ -44,6 +44,55 @@
 # They are switched off in ~/.config/noctalia/config.toml: a line each in
 # [bar.default], [dock], [shell], [wallpaper] and two templates, and one
 # block at the end, all marked "managed by mine".
+
+# Key binds first, the quick way: one line to the running shell's own socket
+# (shell.qml, "Key binds' quick way in"), ~5 ms, where a `qs ipc` client
+# takes ~80 ms just to start. Up here, so bash runs it before it has even
+# read the rest of this file. On to the usual way below only when nothing
+# took the line: no socket, nobody listening (shell not running), or "no"
+# (a shell too old to know the call). A shell that took the line but is slow
+# to answer has it: asking again would run it twice.
+# (Indented on purpose: a deploy script reads this file up to the first
+# line that starts with "case ".)
+quick() {
+    local sock="${XDG_RUNTIME_DIR:-/run/user/$UID}/qs-${MINE_CONFIG:-mine}.sock" reply
+    [ -S "$sock" ] || return 1
+    reply=$(printf '%s\n' "$*" | socat -t 1 -T 1 - "UNIX-CONNECT:$sock,shut-none" 2>/dev/null) || return 1
+    [ "$reply" != no ]
+}
+quick_keys() {
+    case "${1:-} ${2:-}" in
+        "launcher "*) quick launcher toggle && exit 0 ;;
+        "control-center "*) quick control toggle main && exit 0 ;;
+        "session "*) quick session toggle && exit 0 ;;
+        "wallpaper "*) quick wallpaper toggle && exit 0 ;;
+        "clipboard "*) quick clipboard toggle && exit 0 ;;
+        "settings "*) quick control settings && exit 0 ;;
+        "overview "*) quick overview toggle && exit 0 ;;
+        "cheatsheet "*) quick cheatsheet toggle && exit 0 ;;
+        "picker "*) quick picker pick && exit 0 ;;
+        "switcher next" | "switcher previous") quick switcher "$2" && exit 0 ;;
+        "switcher ") quick switcher next && exit 0 ;;
+        "key volume-up") quick keys volumeUp && exit 0 ;;
+        "key volume-down") quick keys volumeDown && exit 0 ;;
+        "key volume-mute") quick keys volumeMute && exit 0 ;;
+        "key mic-mute") quick keys micMute && exit 0 ;;
+        "key brightness-up") quick keys brightnessUp && exit 0 ;;
+        "key brightness-down") quick keys brightnessDown && exit 0 ;;
+        "key play") quick keys playPause && exit 0 ;;
+        "key next") quick keys next && exit 0 ;;
+        "key previous") quick keys previous && exit 0 ;;
+        "screenshot ") quick screenshot region && exit 0 ;;
+        "screenshot region" | "screenshot window" | "screenshot screen" | "screenshot text" | "screenshot qr" \
+            | "screenshot lens" | "screenshot translate") quick screenshot "$2" && exit 0 ;;
+        "record ") quick record screen && exit 0 ;;
+        "record screen" | "record region" | "record stop" | "record toggle") quick record "$2" && exit 0 ;;
+        "osk " | "osk toggle" | "osk open" | "osk close" | "osk tablet") quick osk "${2:-toggle}" && exit 0 ;;
+    esac
+}
+# Only as the mine command itself (a deploy script evals the top of this file).
+[ "${0##*/}" = mine ] && quick_keys "$@"
+
 set -euo pipefail
 
 flag="${XDG_STATE_HOME:-$HOME/.local/state}/mine-shell/on"
@@ -148,7 +197,7 @@ cleanup_children() {
     pkill "${only[@]}" -f "wl-paste --type (text|image) --watch (cliphist store|sh .*/scripts/clip-store\.sh)" 2>/dev/null || true
     pkill "${only[@]}" -f "wl-clip-persist --clipboard regular" 2>/dev/null || true
     pkill "${only[@]}" -f "udevadm monitor --udev --subsystem-match=backlight" 2>/dev/null || true
-    pkill "${only[@]}" -f "^monitor-sensor --accel$" 2>/dev/null || true
+    pkill "${only[@]}" -f "^monitor-sensor --(accel|light)$" 2>/dev/null || true
 }
 
 # If it hangs while exiting (seen after a reload that failed), end it the
@@ -267,12 +316,6 @@ EOF
     if pgrep -x noctalia >/dev/null; then
         noctalia msg config-reload >/dev/null 2>&1 || true
     fi
-}
-
-# Which keys reached this script (to find keys that do nothing). Lives in
-# $XDG_RUNTIME_DIR, so it's gone after a reboot.
-keylog() {
-    echo "$(date +%T) $*" >>"${XDG_RUNTIME_DIR:-/tmp}/mine-keys.log"
 }
 
 case "${1:-status}" in
@@ -398,12 +441,8 @@ case "${1:-status}" in
             next | previous) ;;
             *) echo "usage: mine switcher next | previous" >&2; exit 2 ;;
         esac
-        if timeout 1 qs -c mine ipc call switcher "${2:-next}" >/dev/null 2>&1; then
-            keylog "switcher ${2:-next} -> my shell"
-        else
-            keylog "switcher ${2:-next} -> my shell failed, mango overview"
-            mmsg dispatch toggleoverview
-        fi
+        timeout 1 qs -c mine ipc call switcher "${2:-next}" >/dev/null 2>&1 \
+            || mmsg dispatch toggleoverview
         ;;
     key)
         # Media keys: mine key volume-up | volume-down | volume-mute | mic-mute
@@ -420,21 +459,17 @@ case "${1:-status}" in
             previous) fn=previous; fallback="media previous" ;;
             *) echo "usage: mine key volume-up|volume-down|volume-mute|mic-mute|brightness-up|brightness-down|play|next|previous" >&2; exit 2 ;;
         esac
-        if timeout 1 qs -c mine ipc call keys "$fn" >/dev/null 2>&1; then
-            keylog "key $2 -> my shell"
-        else
-            keylog "key $2 -> my shell failed, Noctalia"
-            # shellcheck disable=SC2086
-            noctalia msg $fallback
-        fi
+        # shellcheck disable=SC2086
+        timeout 1 qs -c mine ipc call keys "$fn" >/dev/null 2>&1 \
+            || noctalia msg $fallback
         ;;
     screenshot)
-        what="${2:-region}"             # region | window | screen | text
+        what="${2:-region}"             # region | window | screen | text | qr | lens | translate
         case "$what" in
             region | window) fallback=screenshot-region ;;
             screen) fallback=screenshot-fullscreen ;;
-            text) fallback="" ;;        # copy the text in a region (OCR); only my shell
-            *) echo "usage: mine screenshot region | window | screen | text" >&2; exit 2 ;;
+            text | qr | lens | translate) fallback="" ;;    # OCR, QR scan, Google Lens, translate a region; only my shell
+            *) echo "usage: mine screenshot region | window | screen | text | qr | lens | translate" >&2; exit 2 ;;
         esac
         timeout 1 qs -c mine ipc call screenshot "$what" >/dev/null 2>&1 \
             || { [ -n "$fallback" ] && noctalia msg "$fallback"; }

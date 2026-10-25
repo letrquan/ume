@@ -78,7 +78,9 @@ Singleton {
     // ---- What the picker, IPC and keys call ---------------------------------------
 
     function set(path, from) {
-        if (!path || path === current)
+        // Only a full path (a picture's name can hold a line break, and
+        // a piece after it would otherwise count from your home folder).
+        if (!path || path === current || !String(path).startsWith("/"))
             return;
         origin = from ?? Qt.point(0.5, 0);
         current = path;
@@ -189,7 +191,13 @@ Singleton {
             onStreamFinished: {
                 // Only when it changed: a new list rebuilds the picker's whole
                 // grid, which would happen right while it opens.
-                const found = text.split("\n").filter(l => l !== "").sort((a, b) => a.localeCompare(b));
+                // One picture per line; a name with a line break in it
+                // (any program that can write to the folder can make one)
+                // would add made-up lines: only those in the folder, with a
+                // picture's ending, count.
+                const inDir = Style.wallpaperDir.replace(/\/+$/, "") + "/";
+                const found = text.split("\n").filter(l => l.startsWith(inDir) && /\.(jpe?g|png|webp)$/i.test(l))
+                    .sort((a, b) => a.localeCompare(b));
                 if (found.join("\n") !== root.list.join("\n"))
                     root.list = found;
                 const waiting = root.afterScan;
@@ -257,10 +265,11 @@ Singleton {
             return;
         }
         matugen.forPath = current;
-        matugen.command = ["matugen", "image", current, "--dry-run", "-j", "hex",
+        // The picture after "--": its name is only a name, never an option.
+        matugen.command = ["matugen", "image", "--dry-run", "-j", "hex",
                            "-m", root.dark ? "dark" : "light", "-t", Style.wallpaperScheme,
                            "--source-color-index", "0",
-                           "-c", Quickshell.shellDir + "/matugen/config.toml"];
+                           "-c", Quickshell.shellDir + "/matugen/config.toml", "--", current];
         matugen.running = true;
     }
 
@@ -628,7 +637,8 @@ Singleton {
         dailyGet.file = file;
         dailyGet.command = ["sh", "-c",
             'mkdir -p "$1" && { [ -s "$2" ] || { curl -fsS --max-time 120 -o "$2.part" "$3" && mv -f "$2.part" "$2"; }; } '
-            + '&& ls -1t "$1"/*.jpg | tail -n +15 | while IFS= read -r f; do rm -f -- "$f"; done',
+            // The newest 14 stay (by time, NUL-separated: a name is only a name).
+            + '&& find "$1" -maxdepth 1 -type f -name "*.jpg" -printf "%T@ %p\\0" | sort -zrn | tail -zn +15 | cut -zd" " -f2- | xargs -0r rm -f --',
             "sh", dailyDir, file, dailyHost + img.urlbase + "_UHD.jpg"];
         dailyGet.running = true;
     }
