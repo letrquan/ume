@@ -415,5 +415,269 @@ Singleton {
                 onSecondary: SongRec.toggle(SongRec.otherSource)
             }
         }
+
+        // ---- Screen time (services/ScreenTime.qml, services/Breaks.qml) ----------------
+        // Today's time on the screen. Click: the screen time popup (per app,
+        // the last 7 days); right click (or a long press): break reminders
+        // on or off (lit while on).
+        TileSpec {
+            tileId: "screentime"
+            label: "Screen time"
+            icon: "hourglass_bottom"
+            desc: "Today's time on the screen; click for each app and the week, right click: break reminders"
+
+            Tile {
+                id: screenTimeTile
+                icon: Breaks.phase === "break" ? "self_improvement" : "hourglass_bottom"
+                label: "Screen time"
+                detail: (ScreenTime.enabled ? ScreenTime.durationText(ScreenTime.totalOn(ScreenTime.dayKey(now), now + ScreenTime.revision * 0), false) + " today" : "Not counting")
+                    + (Breaks.enabled ? " · breaks on" : "")
+                active: Breaks.enabled
+                hasSecondary: true
+                onToggled: {
+                    ControlState.close();
+                    BarPopupState.show("screentime", "", Qt.rect(0, 0, 0, 0));
+                }
+                onSecondary: Breaks.setOn(!Breaks.enabled)
+
+                // Today's total moves on while the control center is open.
+                property real now: Date.now()
+                Timer {
+                    interval: 30000
+                    running: true
+                    repeat: true
+                    onTriggered: screenTimeTile.now = Date.now()
+                }
+            }
+        }
+
+        // ---- What used to sit on the bar (Style.barStyle's one bar keeps it calm) -------
+        // AI usage (services/AiUsage.qml): Claude's and Codex's limits.
+        // Click: the popup with the details and reset times.
+        TileSpec {
+            tileId: "aiusage"
+            label: "AI usage"
+            icon: "data_usage"
+            desc: "Claude's and Codex's limits, once you're signed in; click: the details and reset times"
+            available: () => AiUsage.any
+
+            Tile {
+                icon: "data_usage"
+                label: "AI usage"
+                detail: {
+                    const parts = [];
+                    if (AiUsage.claude.present) {
+                        const s = AiUsage.claude.data?.session ?? null;
+                        parts.push("Claude " + (AiUsage.claude.phase === "expired" ? "sign in" : s ? Math.round(s.percent) + "%" : "…"));
+                    }
+                    if (AiUsage.codex.present) {
+                        const w = AiUsage.windowsOf(AiUsage.codex);
+                        parts.push("Codex " + (AiUsage.codex.phase === "expired" ? "sign in"
+                            : w.length > 0 ? Math.round(Math.max(...w.map(x => x.percent))) + "%" : "…"));
+                    }
+                    return parts.join(" · ");
+                }
+                onToggled: {
+                    ControlState.close();
+                    BarPopupState.show("aiusage", "", Qt.rect(0, 0, 0, 0));
+                }
+                Component.onCompleted: AiUsage.use(true)
+                Component.onDestruction: AiUsage.use(false)
+            }
+        }
+
+        // Updates (services/Updates.qml): how many packages wait. Click: the
+        // updates panel.
+        TileSpec {
+            tileId: "updates"
+            label: "Updates"
+            icon: "deployed_code_update"
+            desc: "How many packages wait (repos, AUR, Flatpak); click: the updates panel"
+
+            Tile {
+                id: updatesTile
+                icon: "deployed_code_update"
+                label: "Updates"
+                detail: Updates.count > 0 ? Updates.count + " waiting" : "Up to date"
+                active: Updates.count > 0
+                onToggled: {
+                    const screen = updatesTile.QsWindow.window?.screen?.name
+                        ?? (Quickshell.screens.length > 0 ? Quickshell.screens[0].name : "");
+                    ControlState.close();
+                    UpdatesState.show(screen, Qt.rect(0, 0, 0, 0));
+                }
+                Component.onCompleted: Updates.use(true)
+                Component.onDestruction: Updates.use(false)
+            }
+        }
+
+        // The System popup (CPU, memory, processes; services/SysmonState.qml).
+        TileSpec {
+            tileId: "system"
+            label: "System"
+            icon: "memory"
+            desc: "CPU, memory and what's using them; click: the System popup"
+
+            Tile {
+                icon: "memory"
+                label: "System"
+                detail: "CPU, memory, apps"
+                onToggled: SysmonState.show("right")
+            }
+        }
+
+        // ---- Timer, stopwatch, alarm (services/Timers.qml, control/TimersPage.qml) ----
+        // Timer: click starts the last length, pauses, goes on (or stops it
+        // ringing); right click cancels; the arrow: presets and any length.
+        TileSpec {
+            tileId: "timer"
+            label: "Timer"
+            icon: "hourglass_top"
+            desc: "Counts down: presets or any length, a sound when it's done"
+
+            Tile {
+                readonly property bool rings: Timers.ringing && Timers.ringKind === "timer"
+                icon: rings ? "notifications_active" : "hourglass_top"
+                label: "Timer"
+                detail: rings ? "Done · click to stop"
+                      : Timers.timerState === "running" ? Timers.timerText + " left"
+                      : Timers.timerState === "paused" ? "Paused · " + Timers.timerText
+                      : "Click: " + Timers.lengthText(Timers.lastLength)
+                active: rings || Timers.timerState !== "idle"
+                hasPage: true
+                hasSecondary: true
+                onToggled: rings ? Timers.stopRing() : Timers.toggleTimer()
+                onSecondary: Timers.cancelTimer()
+                onOpenPage: {
+                    Timers.pageTab = "timer";
+                    ControlState.page = "timers";
+                }
+            }
+        }
+
+        // Stopwatch: click starts / pauses, right click: a lap while it
+        // runs, reset while paused; the arrow: the laps.
+        TileSpec {
+            tileId: "stopwatch"
+            label: "Stopwatch"
+            icon: "timer"
+            desc: "Start, pause, laps"
+
+            Tile {
+                icon: "timer"
+                label: "Stopwatch"
+                detail: Timers.swRunning ? Timers.swText + (Timers.swLaps.length > 0 ? " · lap " + (Timers.swLaps.length + 1) : "")
+                      : Timers.swStarted ? "Paused · " + Timers.swText : "Click to start"
+                active: Timers.swRunning
+                hasPage: true
+                hasSecondary: true
+                onToggled: Timers.toggleStopwatch()
+                onSecondary: Timers.swRunning ? Timers.lap() : Timers.resetStopwatch()
+                onOpenPage: {
+                    Timers.pageTab = "stopwatch";
+                    ControlState.page = "timers";
+                }
+            }
+        }
+
+        // Alarm: the next one; click (or the arrow): the alarms, or Stop
+        // while one rings.
+        TileSpec {
+            tileId: "alarm"
+            label: "Alarm"
+            icon: "alarm"
+            desc: "Alarms at a time, once or on chosen days (while the laptop is awake)"
+
+            Tile {
+                readonly property bool rings: Timers.ringing && Timers.ringKind === "alarm"
+                icon: rings ? "notifications_active" : Timers.nextAlarm ? "alarm_on" : "alarm"
+                label: "Alarm"
+                detail: rings ? Timers.ringTitle + " · click to stop"
+                      : Timers.nextAlarm ? Timers.whenText(Timers.nextAlarm.at) + (Timers.nextAlarm.alarm.label !== "" ? " · " + Timers.nextAlarm.alarm.label : "")
+                      : "No alarm set"
+                active: rings || Timers.nextAlarm !== null
+                hasPage: true
+                onToggled: {
+                    if (rings) {
+                        Timers.stopRing();
+                        return;
+                    }
+                    Timers.pageTab = "alarms";
+                    ControlState.page = "timers";
+                }
+                onOpenPage: {
+                    Timers.pageTab = "alarms";
+                    ControlState.page = "timers";
+                }
+            }
+        }
+
+        // ---- Draw on screen (services/Ink.qml) ------------------------------------
+        // Click: the ink comes up once the control center is out of the way.
+        TileSpec {
+            tileId: "ink"
+            label: "Draw on screen"
+            icon: "draw"
+            desc: "Draw over everything with the pen, a highlighter or a laser pointer"
+
+            Tile {
+                icon: "draw"
+                label: "Draw on screen"
+                detail: Ink.open ? (Ink.passThrough ? "On · pass-through" : "On · click to end") : "Pen, highlighter, laser"
+                active: Ink.open
+                onToggled: {
+                    if (Ink.open) {
+                        Ink.close();
+                        return;
+                    }
+                    ControlState.close();
+                    inkLater.start();
+                }
+
+                Timer {
+                    id: inkLater
+                    interval: Motion.morphOut + 150
+                    onTriggered: Ink.show()
+                }
+            }
+        }
+
+        // ---- Notes (services/Notes.qml) -------------------------------------------
+        // Click: the notes panel (the control center closes); right click: a
+        // new checklist.
+        TileSpec {
+            tileId: "notes"
+            label: "Notes"
+            icon: "edit_note"
+            desc: "Notes, checklists and drawings, for the pen and the on-screen keyboard"
+
+            Tile {
+                readonly property var pinned: Notes.revision >= 0 ? Notes.desktopNote : null
+                icon: "edit_note"
+                label: "Notes"
+                detail: Notes.notes.length === 0 ? "Write something" : Notes.label(pinned)
+                active: Notes.open
+                hasSecondary: true
+                onToggled: {
+                    ControlState.close();
+                    notesLater.start();
+                }
+                onSecondary: {
+                    ControlState.close();
+                    notesLater.kind = "list";
+                    notesLater.start();
+                }
+
+                Timer {
+                    id: notesLater
+                    property string kind: ""
+                    interval: Motion.morphOut + 100
+                    onTriggered: {
+                        Notes.show(kind !== "" ? Notes.add(kind) : null);
+                        kind = "";
+                    }
+                }
+            }
+        }
     }
 }

@@ -4,8 +4,9 @@ import qs.common
 // A big toggle tile:  [shape+icon]  Wi-Fi          ›
 //                                    Home 5G
 // Click the tile to switch it, the arrow for its page. When on, it fills
-// with the accent color and its shape turns into a cookie. With
-// `hasSecondary`, a right click or a long press does `secondary` instead.
+// with the accent color and its shape turns into a cookie (Style.tileStyle
+// "calm": the tile stays neutral and only the icon's circle turns accent).
+// With `hasSecondary`, a right click or a long press does `secondary` instead.
 Item {
     id: root
 
@@ -22,11 +23,14 @@ Item {
 
     implicitHeight: Style.ccTileHeight
 
+    // The tile itself in the accent (on, "filled"), or only its circle.
+    readonly property bool filled: active && Style.tileStyle !== "calm"
+
     Rectangle {
         id: body
         anchors.fill: parent
         radius: Style.inner(Style.ccRadius, Style.ccPadding)
-        color: root.active ? Colors.primary : Style.alpha(Colors.textOnSurface, 0.08)
+        color: root.filled ? Colors.primary : Style.alpha(Colors.textOnSurface, root.active ? 0.12 : 0.07)
         scale: main.pressed ? 0.96 : 1
 
         Behavior on color { ColorAnimation { duration: Motion.normal } }
@@ -38,7 +42,7 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: parent.radius
-            color: root.active ? Colors.textOnPrimary : Colors.textOnSurface
+            color: root.filled ? Colors.textOnPrimary : Colors.textOnSurface
             opacity: main.containsMouse || arrow.containsMouse ? Style.hoverTint : 0
             Behavior on opacity { NumberAnimation { duration: Motion.fast } }
         }
@@ -77,7 +81,7 @@ Item {
             Shape {
                 anchors.fill: parent
                 shape: root.active ? "Cookie9Sided" : "Circle"
-                color: root.active ? Colors.primaryContainer : Style.alpha(Colors.textOnSurface, 0.1)
+                color: root.filled ? Colors.primaryContainer : root.active ? Colors.primary : Style.alpha(Colors.textOnSurface, 0.1)
                 rotation: root.active ? 0 : -40
                 Behavior on rotation {
                     NumberAnimation { duration: Motion.slow; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.defaultSpatial }
@@ -89,7 +93,7 @@ Item {
                 name: root.icon
                 size: 19
                 fill: root.active ? 1 : 0
-                color: root.active ? Colors.textOnPrimaryContainer : Colors.textOnSurface
+                color: root.filled ? Colors.textOnPrimaryContainer : root.active ? Colors.textOnPrimary : Colors.textOnSurface
             }
         }
 
@@ -101,7 +105,7 @@ Item {
                 width: parent.width
                 text: root.label
                 weight: 650
-                color: root.active ? Colors.textOnPrimary : Colors.textOnSurface
+                color: root.filled ? Colors.textOnPrimary : Colors.textOnSurface
                 elide: Text.ElideRight
             }
             StyledText {
@@ -109,7 +113,7 @@ Item {
                 text: root.detail
                 visible: text !== ""
                 role: "caption"
-                color: root.active ? Style.alpha(Colors.textOnPrimary, 0.75) : Colors.textOnSurfaceVariant
+                color: root.filled ? Style.alpha(Colors.textOnPrimary, 0.75) : Colors.textOnSurfaceVariant
                 elide: Text.ElideRight
             }
         }
@@ -132,7 +136,7 @@ Item {
             anchors.horizontalCenterOffset: -4
             name: "chevron_right"
             size: 20
-            color: root.active ? Colors.textOnPrimary : Colors.textOnSurfaceVariant
+            color: root.filled ? Colors.textOnPrimary : Colors.textOnSurfaceVariant
         }
     }
 }

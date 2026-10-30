@@ -15,6 +15,17 @@ Reveal {
 
     // Set by the bar: the mouse is over the island this sits in.
     property bool islandHovered: false
+    // Set by the bar: widest this may get, all of it (the clock island
+    // stays in the screen's middle, so the song gets what the islands on
+    // either side leave). The name or the lyric line gives way first; with
+    // no room even for the cover, the whole thing slides away.
+    property real maxWidth: Infinity
+    // All but the name: divider, the button's padding, cover, gaps, bars
+    // and (while hovered) previous/next.
+    readonly property real chrome: 11 + track.padding * 2 + 20 + track.spacing
+        + (bars.width > 0 ? track.spacing + bars.width : 0) + controls.width
+    // Room for the name; too little to read and it goes (the cover stays).
+    readonly property real textRoom: maxWidth - chrome >= 40 ? maxWidth - chrome : 0
 
     // The player the whole shell shows (common/Players.qml).
     readonly property var player: Players.active
@@ -25,7 +36,7 @@ Reveal {
     readonly property string song: artist !== "" ? title + "  ·  " + artist : title
 
     anchors.verticalCenter: parent?.verticalCenter
-    shown: title !== ""
+    shown: title !== "" && maxWidth >= 60
 
     // ---- Lyrics (services/Lyrics.qml) ---------------------------------------------------
     // With timed lyrics the song's name gives way to the line being sung,
@@ -72,7 +83,8 @@ Reveal {
     Component.onDestruction: Lyrics.barViews--
 
     Row {
-        Divider {}
+        // (In one bar the island needs no line, only the room.)
+        Divider { opacity: Style.barJoined ? 0 : 1 }
 
         Clickable {
             id: track
@@ -144,12 +156,12 @@ Reveal {
             // slot of fixed width.
             Item {
                 anchors.verticalCenter: parent.verticalCenter
-                width: root.lyricMode ? Style.lyricsBarWidth : songText.width
+                width: root.lyricMode ? Math.min(Style.lyricsBarWidth, root.textRoom) : songText.width
                 height: songText.implicitHeight
 
                 StyledText {
                     id: songText
-                    width: Math.min(implicitWidth, Style.mediaMaxWidth)
+                    width: Math.min(implicitWidth, Style.mediaMaxWidth, root.textRoom)
                     visible: !root.lyricMode
                     rightPadding: 4
                     text: root.song
@@ -157,7 +169,7 @@ Reveal {
                     color: root.playing ? Colors.textOnSurface : Colors.textOnSurfaceVariant
                 }
                 LyricLine {
-                    width: Style.lyricsBarWidth - 4
+                    width: Math.max(0, parent.width - 4)
                     height: parent.height
                     visible: root.lyricMode
                     text: root.lineText
@@ -166,10 +178,11 @@ Reveal {
             }
 
             // Bars dancing to the music (cava), while it plays.
-            MusicBars {}
+            MusicBars { id: bars }
         }
 
         Reveal {
+            id: controls
             anchors.verticalCenter: parent.verticalCenter
             shown: root.islandHovered
 

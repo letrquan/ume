@@ -141,6 +141,8 @@ Row {
 
             Rectangle {
                 x: (parent.width + 10 + Style.islandSpacing - 6) / 2
+                // (In one bar, only the room.)
+                visible: !Style.barJoined
                 width: 1
                 height: parent.height
                 radius: 0.5

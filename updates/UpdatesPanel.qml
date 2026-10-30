@@ -112,11 +112,11 @@ Item {
 
     // ---- Where the card goes ----------------------------------------------------------------
     readonly property rect origin: from.width > 0 ? from
-        : Qt.rect(width - Style.marginEnds - 40, Style.marginEdge + (Style.islandHeight - Style.itemHeight) / 2, 32, Style.itemHeight)
+        : Qt.rect(width - Style.islandSide - 40, Style.islandTop + (Style.islandHeight - Style.itemHeight) / 2, 32, Style.itemHeight)
     readonly property real toWidth: Style.updatesPanelWidth
     readonly property real toX: Math.max(Style.marginEdge,
         Math.min(width - toWidth - Style.marginEdge, origin.x + origin.width / 2 - toWidth / 2))
-    readonly property real toY: Style.marginEdge + Style.islandHeight + Style.osdGap
+    readonly property real toY: Style.barBottom + Style.osdGap
     readonly property int pad: 14
     readonly property int gap: 10
     // Never past the screen (the dock's room kept): the lists scroll.

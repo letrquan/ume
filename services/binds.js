@@ -37,7 +37,8 @@ const KEYS = {
     xf86audioprev: "Prev", xf86audionext: "Next", xf86audiostop: "Stop",
     xf86monbrightnessup: "Bright +", xf86monbrightnessdown: "Bright −",
     xf86kbdbrightnessup: "Kbd light +", xf86kbdbrightnessdown: "Kbd light −",
-    xf86calculator: "Calc", xf86poweroff: "Power", xf86search: "Search", xf86wlan: "Wi-Fi"
+    xf86calculator: "Calc", xf86poweroff: "Power", xf86search: "Search", xf86wlan: "Wi-Fi",
+    xf86assistant: "Copilot"
 };
 // Keys that are modifiers themselves: a bind on releasing one is a "tap".
 const MOD_KEYS = { super_l: "Super", super_r: "Super", alt_l: "Alt", alt_r: "Alt",
@@ -62,6 +63,12 @@ function keyName(key) {
 function modChips(mods) {
     const names = String(mods).split("+").map(m => MODS[m.trim().toLowerCase()]).filter(m => m);
     return MOD_ORDER.filter(m => names.includes(m)).map(chip);
+}
+// The same for a bind on `key`: the Copilot key sends Super+Shift itself (and F23,
+// which xkb reads as XF86Assistant), so a bind on it shows as that one key.
+function keyMods(mods, key) {
+    const own = String(key).toLowerCase() === "xf86assistant" ? ["Super", "Shift"] : [];
+    return modChips(mods).filter(c => !own.includes(c.text));
 }
 
 function chip(text) {
@@ -147,7 +154,14 @@ const MINE = {
     "color-picker": "Pick a color from the screen",
     "colorpicker": "Pick a color from the screen",
     "nightlight": "Night light",
-    "restart": "Restart the shell"
+    "restart": "Restart the shell",
+    "launcher grid": "All apps (grid)",
+    "ink": "Draw on the screen",
+    "notes": "Notes and to-dos",
+    "timers": "Timer, stopwatch and alarms",
+    "screentime": "Screen time",
+    "screentime break": "Take a break now",
+    "aiusage": "Claude and Codex usage"
 };
 
 const APPS = {
@@ -272,8 +286,8 @@ function parse(text) {
             b.func = parts[2] ?? "";
             b.args = parts.slice(3);
         } else {                                // bind, bindl, bindr…: mods, key, func, args
-            const mods = modChips(parts[0]);
             const key = parts[1] ?? "";
+            const mods = keyMods(parts[0], key);
             const flags = m[1].slice(4);
             const modKey = MOD_KEYS[key.toLowerCase()];
             if (modKey) {
@@ -425,7 +439,7 @@ function shortcuts(text) {
             id = "mine:" + mine[1].trim();
         }
         const key = parts[1] ?? "";
-        const mods = modChips(parts[0]).map(c => c.text);
+        const mods = keyMods(parts[0], key).map(c => c.text);
         const modKey = MOD_KEYS[key.toLowerCase()];
         const names = modKey ? (mods.includes(modKey) ? mods : mods.concat([modKey])) : mods.concat([keyName(key)]);
         // Also with its arguments: "func:view,3" -> "Super+3".

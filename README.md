@@ -14,7 +14,8 @@ wallpaper, and every piece of the desktop in one shell.
 
 Every clip below is the real shell, recorded in a headless session with made-up data
 (notifications, music, lyrics, calendar, clipboard, updates, devices). That session had no network
-or Bluetooth, so those show as off. The whole walkthrough as one video (2 min, 1920×1200 MP4, 37 MB):
+or Bluetooth, so those show as off. The clips show the default look (three islands); the one-bar
+styles and the newest parts below have no clips yet. The whole walkthrough as one video (2 min, 1920×1200 MP4, 37 MB):
 [walkthrough.mp4](https://github.com/letrquan/ume/releases/download/walkthrough/walkthrough.mp4).
 
 <table>
@@ -67,14 +68,18 @@ or Bluetooth, so those show as off. The whole walkthrough as one video (2 min, 1
 ## What's in it
 
 - **Bar**: three glass islands (left, clock, right) whose items you can rearrange, a live-activity
-  segment in the middle island, a system tray, and items for updates, USB drives and Tailscale
+  segment in the middle island, a system tray, and items for updates, USB drives and Tailscale.
+  Or one bar (Settings → Bar → Style): **float**, **hug** (it curves into the screen's sides) or
+  **plain**, with the clock and music in a near-black dynamic island, one status button for Wi-Fi,
+  volume and battery, and workspaces as dots
 - **Notifications** that grow out of the middle island, with a history list behind the bell
 - **Launcher** (tap Super) with an app, emoji, calculator and settings search, and a **clipboard history** (Super+V)
 - **Control center** (Super+N) for Wi-Fi (share a network as a QR code), Bluetooth, audio, a hotspot,
   Tailscale, airplane mode, night light, phone (KDE Connect), name that song (songrec), battery health
   and media. Pick and order its tiles in Settings
-- **Dock**, **overview** (Super+O / hot corner) with live window pictures and drag between workspaces,
-  and an **Alt+Tab** switcher
+- **Dock** with window previews and unread badges (dark like the island with the one-bar styles),
+  an **app grid** (Super+Shift+A, 3 fingers up), **overview** (Super+O / hot corner) with live window
+  pictures and drag between workspaces, and an **Alt+Tab** switcher
 - **OSD** for volume, brightness, mic, caps lock and num lock
 - **Wallpaper picker** (Super+Y) with [matugen](https://github.com/InioX/matugen) colors pushed to
   GTK, foot, starship and mango's borders
@@ -89,7 +94,14 @@ or Bluetooth, so those show as off. The whole walkthrough as one video (2 min, 1
   (`lock.qml`), and an optional **greetd login screen** built from the same parts
 - **Idle**: dim, screen off and lock, with an optional presence sensor lock, and optional auto
   brightness from the light sensor
-- **Settings window** (Super+,) where every knob in `common/Style.qml` can be changed
+- **Timers** (Super+Alt+T): timer, stopwatch and alarms, with a bar item while one runs
+- **Notes and to-dos** (Super+Shift+N), also as a desktop card, and **ink** (Super+P): draw on the screen
+- **Screen time** (Super+Alt+S): per app, the last 7 days, and break reminders (on by default, off in Settings)
+- **Claude and Codex usage** (Super+Alt+U): rings for the 5-hour and weekly limits. It reads the
+  login those CLIs already saved (`~/.claude/.credentials.json`, `~/.codex/auth.json`) and sends it
+  only to their own usage endpoints (api.anthropic.com, chatgpt.com); without them it stays empty
+- **Settings window** (Super+,) where every knob in `common/Style.qml` can be changed, including the
+  look: liquid or flat glass, expressive shapes or plain circles, filled or calm control tiles
 - **Tablet mode**: on-screen keyboard, auto-rotate
 - **Cheat sheet** of every shortcut (Super+/)
 

@@ -28,6 +28,8 @@ import qs.overview
 import qs.osk
 import qs.activity
 import qs.updates
+import qs.ink
+import qs.notes
 
 // My own shell for mango. Run: qs -c mine   (or: mine on, see ~/.local/bin/mine)
 // The bar (three glass islands), the OSD (volume / brightness / mic),
@@ -40,7 +42,7 @@ import qs.updates
 // and the color picker (Super+Shift+C), the media keys, locking before sleep,
 // dimming / screen off / lock when idle, the calendar with the weather
 // (click the clock), the Alt+Tab window switcher, the Settings window
-// (Super+, / ⚙), and the shortcut cheat sheet (Super+/).
+// (Super+, / ⚙) and the shortcut cheat sheet (Super+/).
 // Also the clock on the desktop, night light, reopening your apps at login,
 // and the lock screen (lock.qml, a second entry point started by
 // ~/.local/bin/qs-lock). Nothing of Noctalia's runs any more.
@@ -554,6 +556,12 @@ ShellRoot {
         }
         function close(): void {
             LauncherState.close();
+        }
+
+        // App grid: `mine launcher grid` opens the launcher as a grid of
+        // every app (again: closes it).
+        function grid(): void {
+            LauncherState.toggleGrid();
         }
     }
 
@@ -1172,6 +1180,223 @@ ShellRoot {
         }
     }
 
+    // ---- Screen time, break reminders, AI usage -------------------------------------
+    // Screen time and the break reminders (services/ScreenTime.qml,
+    // services/Breaks.qml): reading these starts them with the shell (no bar
+    // item needed). Screen off comes from Idle; what's counted is saved when
+    // the system goes down and when the power menu locks, sleeps or leaves.
+    // AI usage (services/AiUsage.qml) only checks while its bar item or
+    // popup is there.
+    readonly property bool screenTimeOn: ScreenTime.watching
+    readonly property bool breaksOn: Breaks.watching
+    Binding {
+        target: ScreenTime
+        property: "screenOff"
+        value: Idle.screenOff
+    }
+    Connections {
+        target: Locker
+        function onShutdown(going) {
+            if (going)
+                ScreenTime.flush("shutdown");
+        }
+    }
+    Connections {
+        target: SessionState
+        function onPendingChanged() {
+            if (SessionState.pending)
+                ScreenTime.flush("power menu");
+        }
+    }
+    // "Take a break": the countdown on every screen, only while it's on.
+    Variants {
+        model: Quickshell.screens
+
+        Scope {
+            id: breakScope
+            required property ShellScreen modelData
+
+            LazyLoader {
+                active: Breaks.showing
+
+                BreakWindow {
+                    modelData: breakScope.modelData
+                }
+            }
+        }
+    }
+
+    // qs -c mine ipc call screentime popup | status | breaks | breakNow | skip | reminders on|off|toggle | save
+    // (status: JSON with today per app and the last 7 days, in seconds;
+    // breaks: the reminders' state.)
+    IpcHandler {
+        id: screentimeIpc
+        target: "screentime"
+
+        function popup(): void {
+            BarPopupState.toggle("screentime", "", Qt.rect(0, 0, 0, 0));
+        }
+        function status(): string {
+            return ScreenTime.status();
+        }
+        function breaks(): string {
+            return Breaks.status();
+        }
+        function breakNow(): void {
+            Breaks.takeBreak();
+        }
+        function skip(): void {
+            Breaks.skipBreak();
+        }
+        function reminders(on: string): void {
+            Breaks.setOn(on === "toggle" ? !Breaks.enabled : on === "on");
+        }
+        function save(): void {
+            ScreenTime.flush("ipc");
+        }
+    }
+
+    // qs -c mine ipc call aiusage popup | status | refresh
+    // (status: JSON with the percentages and reset times only.)
+    IpcHandler {
+        id: aiusageIpc
+        target: "aiusage"
+
+        function popup(): void {
+            BarPopupState.toggle("aiusage", "", Qt.rect(0, 0, 0, 0));
+        }
+        function status(): string {
+            return AiUsage.status();
+        }
+        function refresh(): void {
+            AiUsage.refresh();
+        }
+    }
+
+    // ---- Timer, stopwatch, alarms (services/Timers.qml) -------------------------
+    // Read at start, so alarms ring without the control center ever opening.
+    readonly property bool timersLoaded: Timers.loaded
+
+    // qs -c mine ipc call timers start <length> | pause | cancel | stop | snooze
+    //   | stopwatch | lap | reset | alarm "<HH:MM> [label]" | page timer|stopwatch|alarms | status
+    // (length: 5 (minutes), 1:30, 1h 20m; stop / snooze: the one ringing;
+    // alarm: a new one, once; page: the control center on that tab; status: JSON.)
+    IpcHandler {
+        id: timersIpc
+        target: "timers"
+
+        function start(length: string): string {
+            return Timers.startTimer(Timers.parseLength(length)) ? "ok" : "not a length: try 5, 1:30 or 1h 20m";
+        }
+        function pause(): void {
+            Timers.toggleTimer();
+        }
+        function cancel(): void {
+            Timers.cancelTimer();
+        }
+        function stop(): void {
+            Timers.stopRing();
+        }
+        function snooze(): void {
+            Timers.snooze();
+        }
+        function stopwatch(): void {
+            Timers.toggleStopwatch();
+        }
+        function lap(): void {
+            Timers.lap();
+        }
+        function reset(): void {
+            Timers.resetStopwatch();
+        }
+        function alarm(spec: string): string {
+            const m = spec.trim().match(/^(\d{1,2}:\d{2})\s*(.*)$/);
+            return m && Timers.addAlarm(m[1], [], m[2]) !== "" ? "ok" : "not a time: try 07:00 or \"07:00 Wake up\"";
+        }
+        function page(tab: string): void {
+            Timers.pageTab = ["timer", "stopwatch", "alarms"].includes(tab) ? tab : "timer";
+            ControlState.show("timers");
+        }
+        function status(): string {
+            return Timers.status();
+        }
+    }
+
+    // ---- Drawing on the screen (services/Ink.qml) --------------------------------
+    // One see-through window per screen, only while the ink is on.
+    Variants {
+        model: Quickshell.screens
+
+        Scope {
+            id: inkScope
+            required property ShellScreen modelData
+
+            LazyLoader {
+                active: Ink.open
+
+                InkWindow {
+                    modelData: inkScope.modelData
+                }
+            }
+        }
+    }
+
+    // qs -c mine ipc call ink toggle | open | close | clear | undo | passthrough | save
+    IpcHandler {
+        id: inkIpc
+        target: "ink"
+
+        function toggle(): void {
+            Ink.toggle();
+        }
+        function open(): void {
+            Ink.show();
+        }
+        function close(): void {
+            Ink.close();
+        }
+        function clear(): void {
+            Ink.clear();
+        }
+        function undo(): void {
+            Ink.undo();
+        }
+        function passthrough(): void {
+            Ink.togglePassThrough();
+        }
+        function save(): void {
+            Ink.save();
+        }
+    }
+
+    // ---- Notes and to-dos (services/Notes.qml) -----------------------------------
+    // The panel: only exists while open (or fading out).
+    LazyLoader {
+        active: Notes.mapped
+
+        NotesWindow {}
+    }
+
+    // qs -c mine ipc call notes toggle | open | close | add text|list|ink
+    IpcHandler {
+        id: notesIpc
+        target: "notes"
+
+        function toggle(): void {
+            Notes.toggle();
+        }
+        function open(): void {
+            Notes.show();
+        }
+        function close(): void {
+            Notes.close();
+        }
+        // A new note of that kind, open in the panel.
+        function add(kind: string): void {
+            Notes.show(Notes.add(kind));
+        }
+    }
+
     // ---- Key binds' quick way in -------------------------------------------------
     // mango's key binds run ~/.local/bin/mine, which used to start a whole
     // `qs ipc` client for every key: ~80 ms before the shell even heard of
@@ -1187,7 +1412,8 @@ ShellRoot {
 
     // The handlers key binds use (ShellRoot's children can't be walked from JS).
     readonly property list<IpcHandler> quickHandlers: [launcherIpc, controlIpc, sessionIpc, wallpaperIpc,
-        clipboardIpc, overviewIpc, cheatsheetIpc, pickerIpc, switcherIpc, keysIpc, screenshotIpc, recordIpc, oskIpc]
+        clipboardIpc, overviewIpc, cheatsheetIpc, pickerIpc, switcherIpc, keysIpc, screenshotIpc, recordIpc, oskIpc,
+        inkIpc, notesIpc, timersIpc, screentimeIpc, aiusageIpc]
 
     // Only a function the handler itself declares, like `qs ipc` allows:
     // not one every object has (destroy, toString…) nor a change signal.

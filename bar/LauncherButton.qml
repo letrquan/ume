@@ -15,6 +15,8 @@ Clickable {
     Shape {
         width: 18
         height: 18
+        // (The shell's mark: it keeps its shape with simple shapes too.)
+        keep: true
         shape: root.containsMouse ? "Sunny" : "Cookie7Sided"
         color: Colors.primary
         rotation: root.containsMouse ? 60 : 0

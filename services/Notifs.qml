@@ -18,7 +18,9 @@ import "markup.js" as Markup
 //          popup (showing as a popup), read,
 //          replyable (the app takes an answer typed in the card), replyHint,
 //          count (how many times it came: repeats are counted on it),
-//          first (when the first of them came; `time` is the latest) }
+//          first (when the first of them came; `time` is the latest),
+//          desktopEntry (the app's, if it said: dock badges), phone (from
+//          the phone, KDE Connect) }
 // A phone's notification (KDE Connect) is shown as its app's own: appName
 // is the phone's app, summary the sender (see "Phone" below).
 Singleton {
@@ -213,9 +215,10 @@ Singleton {
             return;
         }
         e.read = centerOpen;
-        // While the launcher, the clipboard, the calendar or the Now Playing
-        // card is open it owns the middle island: straight to the list (the
-        // System popup too, when it grew out of the middle island).
+        // While the launcher, the clipboard, the calendar, the Now Playing
+        // card is open it owns the middle island: straight
+        // to the list (the System popup too, when it grew out of the middle
+        // island).
         e.popup = !centerOpen && !LauncherState.open && !ClipboardState.open && !CalendarState.open
                   && !NowPlayingState.open
                   && !(SysmonState.open && SysmonState.island === "center")
@@ -246,6 +249,9 @@ Singleton {
         // KDE apps may name what they show for in a hint.
         e.appName = phone?.app ?? (n.hints?.["x-kde-display-appname"] || n.appName || "");
         e.summary = phone?.title ?? (n.summary || "");
+        // Which app it's from, for the dock's badges (services/Badges.qml).
+        e.phone = phone !== null;
+        e.desktopEntry = phone ? "" : String(n.desktopEntry || "");
         // Only a little markup: no pictures from the internet (markup.js).
         e.body = Markup.body(phone?.body ?? (n.body || ""));
         e.urgency = n.urgency;
@@ -754,7 +760,8 @@ Singleton {
                 // Pictures sent as data only live as long as the notification.
                 icon: e.icon.startsWith("image://qsimage") ? "" : e.icon,
                 image: e.image.startsWith("image://qsimage") ? "" : e.image,
-                urgency: e.urgency, resident: e.resident, read: e.read, count: e.count ?? 1, first: e.first ?? e.time
+                urgency: e.urgency, resident: e.resident, read: e.read, count: e.count ?? 1, first: e.first ?? e.time,
+                desktopEntry: e.desktopEntry ?? "", phone: e.phone ?? false
             }));
             store.setText(JSON.stringify({ dnd: root.dnd, dndHoursWere: root.dndHoursWere, list: keep }, null, 1));
         }
@@ -782,7 +789,7 @@ Singleton {
         const saved =(Array.isArray(data.list) ? data.list : []).filter(s => s && typeof s === "object" && !list.some(e => e.key === s.key)).map(s => {
             const e = Object.assign({
                 appName: "", summary: "", body: "", icon: "", image: "", urgency: NotificationUrgency.Normal,
-                resident: false, read: true
+                resident: false, read: true, desktopEntry: "", phone: false
             }, s, { body: Markup.body(s.body ?? ""), popup: false, actions: [], transient: false, replyable: false, replyHint: "",
                     count: Math.max(1, Math.round(Number(s.count) || 1)), first: typeof s.first === "number" ? s.first : s.time });
             // Saved before phone notifications showed as their app's own

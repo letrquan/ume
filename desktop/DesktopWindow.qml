@@ -8,7 +8,9 @@ import qs.common
 // under every window. One window for all of it (each layer window costs a
 // render thread and GL context), only as big as what it shows, placed by
 // Style.desktopClockPosition.
-// Clicks go through everywhere except the music card's buttons (the mask).
+// Clicks go through everywhere except the music card's buttons and the
+// notes card (the mask). It never takes the keyboard (the notes card's
+// typing happens in the notes panel).
 // mango must not blur behind it (the text's shadow would get a frosted box):
 // `layer_rule=no_blur:1,layer_name:^mine-desktop$` in shell-mine.conf.
 PanelWindow {
@@ -53,9 +55,13 @@ PanelWindow {
     WlrLayershell.namespace: "mine-desktop"
     WlrLayershell.layer: WlrLayer.Bottom
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-    // Only the music card's buttons take clicks; the rest is the desktop.
+    // Only the music card's buttons and the notes card take clicks; the
+    // rest is the desktop.
     mask: Region {
         item: cards.music
+        Region {
+            item: cards.notes
+        }
     }
 
     // The way in (common/Intro.qml): last, after the bar and the dock, the
@@ -115,6 +121,7 @@ PanelWindow {
         // above the clock at the bottom of the screen, under it elsewhere.
         DesktopWidgets {
             id: cards
+            screenName: root.modelData.name
             readonly property real boxX: root.beside
                 ? (root.atRight ? 0 : content.faceW - content.overlap)
                 : (content.width - content.boxW) * root.align

@@ -22,7 +22,8 @@ Item {
     // Width of the middle island right now: where we start and end.
     property real startWidth: 200
     property bool open: false
-    property alias query: input.text
+    // Includes the word the IME is still composing.
+    readonly property string query: input.displayText
     property int selected: 0
 
     // While true the bar hides the real middle island.
@@ -91,7 +92,7 @@ Item {
 
         anchors.fill: parent
         fromX: (width - root.startWidth) / 2
-        fromY: Style.marginEdge
+        fromY: Style.islandTop
         fromWidth: root.startWidth
         toWidth: Style.clipWidth
         toHeight: root.searchHeight + (root.items.length > 0 ? 9 + root.listHeight + 8 : empty.implicitHeight)
@@ -151,7 +152,7 @@ Item {
                     font.pixelSize: Style.textSize("headline")
                     color: Colors.textOnSurfaceVariant
                     opacity: 0.7
-                    visible: input.text === ""
+                    visible: input.displayText === ""
                 }
 
                 Keys.onPressed: event => {

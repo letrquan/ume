@@ -28,7 +28,7 @@ PanelWindow {
     screen: modelData
     anchors.top: true
     anchors.left: underIcon
-    margins.top: Style.marginEdge + Style.islandHeight + Style.osdGap - pad
+    margins.top: Style.barBottom + Style.osdGap - pad
     margins.left: underIcon ? Math.round(iconLeft) : 0
     exclusionMode: ExclusionMode.Ignore
     implicitWidth: view.implicitWidth + pad * 2

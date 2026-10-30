@@ -38,6 +38,8 @@ Singleton {
     property bool mapped: false
     // What you typed: windows on any workspace whose title or app has it.
     property string query: ""
+    // `query` plus the word the IME is still composing: what we search by.
+    property string typed: ""
     // The workspace the overview zooms into as it closes (the one you
     // picked, or the one you're on).
     property int closeTag: 0
@@ -91,6 +93,7 @@ Singleton {
             seed();
         unmap.stop();
         query = "";
+        typed = "";
         closeTag = 0;
         WindowShots.use(1);
         // open first: the window is created the moment `mapped` turns on.

@@ -44,7 +44,7 @@ PanelWindow {
         id: panel
 
         x: parent.width - width - Style.marginEnds
-        y: Style.marginEdge + Style.islandHeight + Style.osdGap
+        y: Style.barBottom + Style.osdGap
         maxHeight: root.height * 0.75
         focus: true
         Keys.onEscapePressed: Notifs.setCenter(false)

@@ -31,7 +31,7 @@ Item {
     readonly property real toWidth: Style.volumePopupWidth
     readonly property real toX: Math.max(Style.marginEdge,
         Math.min(width - toWidth - Style.marginEdge, from.x + from.width / 2 - toWidth / 2))
-    readonly property real toY: Style.marginEdge + Style.islandHeight + Style.osdGap
+    readonly property real toY: Style.barBottom + Style.osdGap
     // The card's height eases on its own, so apps coming and going glide.
     property real toHeight: content.implicitHeight + 2 * pad
     Behavior on toHeight {

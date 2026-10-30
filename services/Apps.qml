@@ -17,9 +17,11 @@ import "calc.js" as Calc
 //   /invoice ~x  files (services/FileSearch.qml), Enter opens, Ctrl+Enter
 //                opens the folder it's in
 //   ?weather     the web (Style.webSearchUrl)
+//   tr hello     a translation (services/Translator.qml), Enter copies it;
+//                "tr ja: hello" picks the language
 //
 // Result: { kind: "app" | "setting" | "calc" | "web" | "url" | "emoji" | "file"
-//                 | "hint", title, subtitle, icon, entry, value }
+//                 | "translate" | "hint", title, subtitle, icon, entry, value }
 Singleton {
     id: root
 
@@ -43,6 +45,8 @@ Singleton {
             return "files";
         if (Style.launcherWeb && q.startsWith("?"))
             return "web";
+        if (Style.launcherTranslate && /^tr\s/i.test(q))
+            return "translate";
         return "apps";
     }
 
@@ -55,17 +59,24 @@ Singleton {
             return q.slice(1).trim();
         case "files":
             return q.replace(/^[~\/]+/, "").trim();
+        case "translate":
+            return q.slice(2).trim();
         }
         return q.trim();
     }
 
     // Called by the launcher when the text changes (searches that run on
-    // their own: files; data read the first time: emoji).
+    // their own: files, a translation; data read the first time: emoji),
+    // and with "" when it closes.
     function prepare(query) {
         const mode = modeOf(query);
         if (mode === "emoji")
             Emoji.load();
         FileSearch.search(mode === "files" ? termOf(query) : "");
+        if (mode === "translate")
+            translateLater(termOf(query));
+        else
+            stopTranslating();
     }
 
     // "Google" for https://www.google.com/search?q=%s
@@ -121,6 +132,8 @@ Singleton {
             return fileResults(termOf(query));
         case "web":
             return webResults(termOf(query));
+        case "translate":
+            return translateResults(termOf(query));
         }
         const q = query.trim().toLowerCase();
         const out = [];
@@ -200,6 +213,110 @@ Singleton {
             return [hint("Type what to search " + engine + " for", "Enter opens your browser", "travel_explore")];
         const url = urlOf(term);
         return (url !== "" ? [urlResult(url)] : []).concat([webResult(term)]);
+    }
+
+    // ---- Translating: "tr hello" (services/Translator.qml) -----------------------
+    // The text goes to Google, so nothing is sent until "tr ", 2 letters or
+    // more, and a pause in typing (translateDelay); each new text cancels
+    // the one asked before, and closing the launcher cancels it too.
+    // "tr ja: hello" asks for Japanese (a language Translator knows by
+    // name); otherwise the pair's rule picks the way (Style.translatePair).
+    readonly property int translateDelay: 450
+    // { text, target ("" = the pair's rule), state: "wait" | "busy" | "done"
+    //   | "error", translation, from, to, error } of the last text typed;
+    // null: nothing asked. While a new text waits, the last answer stays.
+    property var translation: null
+    property var translated: null       // the last answer: { text, target, translation, from, to }
+    property string translateId: ""
+    property int translateCount: 0
+
+    // "ja: hello" → { target: "ja", text: "hello" }; "re: hello" is just text.
+    function translateAsk(term) {
+        const m = term.match(/^([A-Za-z]{2,3}(?:-[A-Za-z]{2,4})?)\s*:\s*([\s\S]*)$/);
+        if (m && Translator.languageName(m[1]) !== m[1].toUpperCase())
+            return { target: m[1], text: m[2].trim() };
+        return { target: "", text: term };
+    }
+    // Letters (and other signs of words: ideographs, kana…), no digits,
+    // spaces or ASCII punctuation (QML's JavaScript has no \p{L}).
+    function letters(text) {
+        return text.replace(/[\s0-9!-\/:-@\[-`{-~]/g, "").length;
+    }
+
+    function translateLater(term) {
+        const ask = translateAsk(term);
+        if (letters(ask.text) < 2) {
+            stopTranslating();
+            return;
+        }
+        if (translation && translation.text === ask.text && translation.target === ask.target)
+            return;
+        cancelTranslation();
+        translation = { text: ask.text, target: ask.target, state: "wait" };
+        translateTimer.restart();
+    }
+
+    function cancelTranslation() {
+        translateTimer.stop();
+        if (translateId !== "")
+            Translator.cancel(translateId);
+        translateId = "";
+    }
+
+    function stopTranslating() {
+        if (translation === null && translated === null && translateId === "")
+            return;
+        cancelTranslation();
+        translation = null;
+        translated = null;
+    }
+
+    Timer {
+        id: translateTimer
+        interval: root.translateDelay
+        onTriggered: {
+            const t = root.translation;
+            if (!t)
+                return;
+            root.translateId = "launcher-" + (++root.translateCount);
+            root.translation = Object.assign({}, t, { state: "busy" });
+            if (!Translator.request(root.translateId, t.text, t.target || "auto")) {
+                root.translateId = "";
+                root.translation = Object.assign({}, t, { state: "error", error: "Nothing to translate" });
+            }
+        }
+    }
+
+    Connections {
+        target: root.translation !== null ? Translator : null
+        function onFinished(id, ok, translation, from, to, error) {
+            if (id !== root.translateId)
+                return;
+            root.translateId = "";
+            const t = root.translation;
+            root.translation = Object.assign({}, t, { state: ok ? "done" : "error", translation: translation, from: from, to: to, error: error });
+            if (ok)
+                root.translated = { text: t.text, target: t.target, translation: translation, from: from, to: to };
+        }
+    }
+
+    function translateResults(term) {
+        const ask = translateAsk(term);
+        const toName = ask.target !== "" ? Translator.languageName(ask.target) : "";
+        if (letters(ask.text) < 2)
+            return [hint(toName !== "" ? "Type what to translate to " + toName : "Type what to translate",
+                         toName !== "" ? "Enter copies the translation" : "“tr ja: hello” picks the language", "translate")];
+        const t = translation;
+        const way = (from, to) => (from ? Translator.languageName(from) + " → " : "") + Translator.languageName(to);
+        if (t && t.state === "done" && t.text === ask.text && t.target === ask.target)
+            return [{ kind: "translate", title: t.translation, subtitle: way(t.from, t.to) + "  ·  Enter copies it", icon: "translate", value: t.translation }];
+        if (t && t.state === "error" && t.text === ask.text && t.target === ask.target)
+            return [hint("Couldn't translate", t.error || "No answer from Google", "translate")];
+        // Waiting: the last answer stays (no flicker on every key), dimmed by "…".
+        const last = translated;
+        const target = ask.target || Translator.targetFor(ask.text);
+        return [last ? { kind: "hint", title: last.translation, subtitle: "Translating…  ·  " + way(Translator.guess(ask.text), target), icon: "translate" }
+                     : hint("Translating…", way(Translator.guess(ask.text), target), "hourglass_empty")];
     }
 
     // A themed icon for a file, by its kind (from the name's ending).
@@ -307,7 +424,7 @@ Singleton {
             launch(r.entry);
         else if (r.kind === "setting")
             SettingsState.reveal(r.value.section, r.value.ref);
-        else if (r.kind === "calc")
+        else if (r.kind === "calc" || r.kind === "translate")
             detached(["wl-copy", "--", r.value]);      // "--": a result can be "-5"
         else if (r.kind === "web")
             detached(["xdg-open", webUrl(r.value)]);
@@ -337,6 +454,101 @@ Singleton {
             console.log("launcher (dry run):", JSON.stringify(cmd));
         else
             Quickshell.execDetached(cmd);
+    }
+
+    // ---- The app grid (launcher/AppGrid.qml) ---------------------------------------
+    // Every app A to Z, in a few groups by its desktop entry's Categories:
+    // the first group in `groupPick` that has one of them (a game that's
+    // also a network app is a game); none of them: Other. Groups with no
+    // apps aren't shown. Only worked out once the grid is first wanted
+    // (gridWanted), then kept up to date with the app list.
+    readonly property var gridGroups: [
+        { id: "all", label: "All", icon: "apps" },
+        { id: "internet", label: "Internet", icon: "language" },
+        { id: "media", label: "Media", icon: "play_circle" },
+        { id: "office", label: "Office", icon: "description" },
+        { id: "development", label: "Development", icon: "code" },
+        { id: "games", label: "Games", icon: "sports_esports" },
+        { id: "system", label: "System", icon: "tune" },
+        { id: "utilities", label: "Utilities", icon: "handyman" },
+        { id: "other", label: "Other", icon: "category" }
+    ]
+    readonly property var groupPick: [
+        ["games", ["Game"]],
+        ["development", ["Development", "IDE", "Debugger", "RevisionControl", "WebDevelopment", "GUIDesigner"]],
+        ["system", ["Settings", "DesktopSettings", "HardwareSettings", "PackageManager"]],
+        ["internet", ["Network", "WebBrowser", "Email", "Chat", "InstantMessaging", "IRCClient", "VideoConference",
+                      "Feed", "News", "FileTransfer", "P2P", "RemoteAccess"]],
+        ["media", ["AudioVideo", "Audio", "Video", "Graphics", "Photography", "Music", "Player", "Recorder", "TV",
+                   "2DGraphics", "3DGraphics", "RasterGraphics", "VectorGraphics"]],
+        ["office", ["Office", "Education", "Science", "Math", "Spreadsheet", "WordProcessor", "Presentation",
+                    "Calendar", "ContactManager", "Finance", "Dictionary", "Literature"]],
+        ["utilities", ["FileManager"]],
+        ["system", ["System", "TerminalEmulator", "Monitor", "Security", "Emulator"]],
+        ["utilities", ["Utility", "Accessibility", "TextEditor", "Archiving", "Compression", "Calculator", "Clock",
+                       "FileTools", "Core"]]
+    ]
+    function groupOf(entry) {
+        const cats = entry?.categories ?? [];
+        for (const [group, names] of groupPick) {
+            for (let i = 0; i < cats.length; i++) {
+                if (names.includes(cats[i]))
+                    return group;
+            }
+        }
+        return "other";
+    }
+
+    property bool gridWanted: false
+    // [{ kind: "app", title, subtitle, icon, entry, group }], A to Z.
+    readonly property var gridApps: gridWanted
+        ? apps.map(a => Object.assign(appResult(a), { group: groupOf(a) })).sort((x, y) => x.title.localeCompare(y.title))
+        : []
+    readonly property var gridGroupsShown: gridGroups.filter(g => g.id === "all" || gridApps.some(a => a.group === g.id))
+    function gridOf(group) {
+        return group === "all" ? gridApps : gridApps.filter(a => a.group === group);
+    }
+
+    // ---- An app's own actions ("New Window", "New Private Window", …) -----------
+    // From its desktop entry ([Desktop Action …]); the dock's right-click
+    // menu, the launcher's actions menu (→ on a result) and the grid's long
+    // press list them. [{ id, name, icon (a Material Symbols name), action }]
+    function actionsOf(entry) {
+        const list = entry?.actions ?? [];
+        const out = [];
+        for (let i = 0; i < list.length && out.length < 8; i++) {
+            const a = list[i];
+            if (a && (a.name ?? "") !== "")
+                out.push({ id: a.id, name: a.name, icon: /private|incognito/i.test(a.name + " " + a.id) ? "visibility_off" : "open_in_new", action: a });
+        }
+        return out;
+    }
+
+    // The app's own "new window" action ("New Window", new-window), or
+    // null: a "New window" row runs it instead of starting the app again
+    // (some apps only bring their window forward then), and it isn't
+    // listed a second time.
+    function isNewWindow(a) {
+        return (a?.id ?? "").toLowerCase().replace(/[^a-z]/g, "") === "newwindow"
+            || (a?.name ?? "").toLowerCase().replace(/[^a-z]/g, "") === "newwindow";
+    }
+    function newWindowOf(entry) {
+        return actionsOf(entry).find(a => isNewWindow(a))?.action ?? null;
+    }
+
+    // Like launch(), for one of its actions (a terminal app's in the terminal).
+    function launchAction(entry, action) {
+        if (!entry || !action)
+            return;
+        counts[entry.id] = (counts[entry.id] ?? 0) + 1;
+        countsVersion++;
+        saveTimer.restart();
+        if (entry.runInTerminal)
+            detached(["xdg-terminal-exec"].concat(action.command));
+        else if (dryRun)
+            console.log("launcher (dry run): execute action", entry.id, action.id);
+        else
+            action.execute();
     }
 
     // ---- Saving how often apps are opened -------------------------------------

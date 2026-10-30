@@ -17,6 +17,7 @@ Reveal {
             TrayItem {}
         }
 
-        Divider {}
+        // (In one bar, only the room.)
+        Divider { opacity: Style.barJoined ? 0 : 1 }
     }
 }

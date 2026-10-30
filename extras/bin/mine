@@ -15,6 +15,8 @@
 #                   starts my shell only when it is "on"
 #   mine launcher   Super (tap): my launcher, or Noctalia's when my shell
 #                   isn't running
+#   mine launcher grid   the launcher as a grid of every app (Launchpad);
+#                   again: closes it
 #   mine control-center   Super+N: same idea for the control center
 #   mine session    Super+X: same idea for the power menu
 #   mine wallpaper  Super+Y: same idea for the wallpaper picker
@@ -62,6 +64,7 @@ quick() {
 }
 quick_keys() {
     case "${1:-} ${2:-}" in
+        "launcher grid") quick launcher grid && exit 0 ;;
         "launcher "*) quick launcher toggle && exit 0 ;;
         "control-center "*) quick control toggle main && exit 0 ;;
         "session "*) quick session toggle && exit 0 ;;
@@ -85,9 +88,15 @@ quick_keys() {
         "screenshot ") quick screenshot region && exit 0 ;;
         "screenshot region" | "screenshot window" | "screenshot screen" | "screenshot text" | "screenshot qr" \
             | "screenshot lens" | "screenshot translate") quick screenshot "$2" && exit 0 ;;
+        "ink " | "ink toggle" | "ink clear" | "ink undo" | "ink passthrough" | "ink save" | "ink close") quick ink "${2:-toggle}" && exit 0 ;;
+        "notes " | "notes toggle") quick notes toggle && exit 0 ;;
+        "timers " | "timers timer" | "timers stopwatch" | "timers alarms") quick timers page "${2:-timer}" && exit 0 ;;
         "record ") quick record screen && exit 0 ;;
         "record screen" | "record region" | "record stop" | "record toggle") quick record "$2" && exit 0 ;;
         "osk " | "osk toggle" | "osk open" | "osk close" | "osk tablet") quick osk "${2:-toggle}" && exit 0 ;;
+        "screentime " | "screentime popup") quick screentime popup && exit 0 ;;
+        "screentime break") quick screentime breakNow && exit 0 ;;
+        "aiusage " | "aiusage popup") quick aiusage popup && exit 0 ;;
     esac
 }
 # Only as the mine command itself (a deploy script evals the top of this file).
@@ -153,7 +162,7 @@ keeper_shell() {
 }
 
 # End the keeper and wait until it's gone, so nothing starts the shell again
-# while it's being stopped (or while deploy.sh copies files).
+# while it's being stopped (or while a deploy script copies files).
 keeper_stop() {
     local pid
     pid=$(keeper_pid)
@@ -197,7 +206,11 @@ cleanup_children() {
     pkill "${only[@]}" -f "wl-paste --type (text|image) --watch (cliphist store|sh .*/scripts/clip-store\.sh)" 2>/dev/null || true
     pkill "${only[@]}" -f "wl-clip-persist --clipboard regular" 2>/dev/null || true
     pkill "${only[@]}" -f "udevadm monitor --udev --subsystem-match=backlight" 2>/dev/null || true
-    pkill "${only[@]}" -f "^monitor-sensor --(accel|light)$" 2>/dev/null || true
+    pkill "${only[@]}" -f "^(/usr/bin/)?monitor-sensor --(accel|light)$" 2>/dev/null || true
+    pkill "${only[@]}" -f "^(/usr/bin/)?busctl --user monitor --json=short --match=type='signal',interface='com\.canonical\.Unity\.LauncherEntry'" 2>/dev/null || true
+    # A timer or alarm still ringing (common/sounds.js loopCommand; TERM also
+    # stops the pw-play it's waiting on).
+    pkill "${only[@]}" -f "^(/usr/bin/)?sh -c trap 'kill .p 2>/dev/null; exit 0' TERM INT; end=" 2>/dev/null || true
 }
 
 # If it hangs while exiting (seen after a reload that failed), end it the
@@ -412,8 +425,13 @@ case "${1:-status}" in
         ;;
     launcher)
         # timeout: a hung shell must not pile up stuck calls on every Super.
-        timeout 1 qs -c mine ipc call launcher toggle >/dev/null 2>&1 \
-            || noctalia msg panel-toggle launcher
+        if [ "${2:-}" = grid ]; then
+            timeout 1 qs -c mine ipc call launcher grid >/dev/null 2>&1 \
+                || noctalia msg panel-toggle launcher
+        else
+            timeout 1 qs -c mine ipc call launcher toggle >/dev/null 2>&1 \
+                || noctalia msg panel-toggle launcher
+        fi
         ;;
     control-center)
         timeout 1 qs -c mine ipc call control toggle main >/dev/null 2>&1 \
@@ -495,6 +513,46 @@ case "${1:-status}" in
     cheatsheet)
         timeout 1 qs -c mine ipc call cheatsheet toggle >/dev/null 2>&1
         ;;
+    screentime)
+        # Screen time: the popup, a break now, skip it, the numbers (JSON).
+        case "${2:-popup}" in
+            popup) fn=popup ;;
+            break) fn=breakNow ;;
+            skip) fn=skip ;;
+            status) fn=status ;;
+            *) echo "usage: mine screentime popup | break | skip | status" >&2; exit 2 ;;
+        esac
+        timeout 1 qs -c mine ipc call screentime "$fn"
+        ;;
+    aiusage)
+        # Claude and Codex usage: the popup, check now, the numbers (JSON).
+        case "${2:-popup}" in
+            popup | refresh | status) ;;
+            *) echo "usage: mine aiusage popup | refresh | status" >&2; exit 2 ;;
+        esac
+        timeout 1 qs -c mine ipc call aiusage "${2:-popup}"
+        ;;
+    ink)
+        # Draw on the screen: toggle | clear | undo | passthrough | save | close
+        what="${2:-toggle}"
+        case "$what" in
+            toggle | clear | undo | passthrough | save | close) ;;
+            *) echo "usage: mine ink toggle | clear | undo | passthrough | save | close" >&2; exit 2 ;;
+        esac
+        timeout 1 qs -c mine ipc call ink "$what" >/dev/null 2>&1
+        ;;
+    notes)
+        timeout 1 qs -c mine ipc call notes toggle >/dev/null 2>&1
+        ;;
+    timers)
+        # The control center's timers page, on a tab: timer | stopwatch | alarms
+        tab="${2:-timer}"
+        case "$tab" in
+            timer | stopwatch | alarms) ;;
+            *) echo "usage: mine timers timer | stopwatch | alarms" >&2; exit 2 ;;
+        esac
+        timeout 1 qs -c mine ipc call timers page "$tab" >/dev/null 2>&1
+        ;;
     status)
         state=off; [ -f "$flag" ] && state=on
         run=no; running && run=yes
@@ -503,7 +561,7 @@ case "${1:-status}" in
         echo "keeper: $keep; last: $(tail -n 1 "$keeper_dir/keeper.log" 2>/dev/null || true)"
         ;;
     *)
-        echo "usage: mine on | off | start | stop | status | restart | launcher | control-center | session | wallpaper | clipboard | screenshot | key | settings | switcher | record | picker | cheatsheet | overview | osk | rotate" >&2
+        echo "usage: mine on | off | start | stop | status | restart | launcher | control-center | session | wallpaper | clipboard | screenshot | key | settings | switcher | record | picker | cheatsheet | overview | osk | rotate | screentime | aiusage | ink | notes | timers" >&2
         exit 2
         ;;
 esac

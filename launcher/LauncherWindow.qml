@@ -37,9 +37,27 @@ PanelWindow {
 
     // While open, the whole screen takes clicks (outside the launcher =
     // close); while shrinking back, clicks already go to your windows.
+    // The on-screen keyboard's strip is left out while it's up (tablet
+    // mode), so its keys type into the search instead of closing it.
     mask: LauncherState.open ? everything : nothing
-    Region { id: everything; item: catcher }
+    Region {
+        id: everything
+        item: catcher
+
+        Region {
+            intersection: Intersection.Subtract
+            item: oskStrip
+        }
+    }
     Region { id: nothing }
+
+    readonly property bool oskHere: (Quickshell.screens.find(s => s.name.startsWith("eDP")) ?? Quickshell.screens[0]) === modelData
+    Item {
+        id: oskStrip
+        anchors.bottom: parent.bottom
+        width: parent.width
+        height: OskState.open && root.oskHere ? Style.oskHeight + Style.marginEdge : 0
+    }
 
     MouseArea {
         id: catcher
@@ -52,6 +70,8 @@ PanelWindow {
         id: view
 
         anchors.fill: parent
+        screenWidth: root.modelData.width
+        screenHeight: root.modelData.height
         startWidth: IslandState.centerWidth
         open: root.ready && LauncherState.open
         onCloseRequested: LauncherState.close()

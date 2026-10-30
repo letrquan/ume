@@ -32,6 +32,10 @@ PanelWindow {
     exclusiveZone: !reveal.hides && Style.dockReserve ? Style.dockMarginEdge + view.barHeight : 0
     color: "transparent"
 
+    // Badges (services/Badges.qml) listen to apps only while a dock is there.
+    Component.onCompleted: Badges.docks++
+    Component.onDestruction: Badges.docks--
+
     WlrLayershell.namespace: "mine-dock"
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None

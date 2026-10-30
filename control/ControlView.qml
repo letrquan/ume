@@ -38,8 +38,8 @@ Item {
 
         anchors.fill: parent
         grow: "right"
-        fromX: width - Style.marginEnds - root.startWidth
-        fromY: Style.marginEdge
+        fromX: width - Style.islandSide - root.startWidth
+        fromY: Style.islandTop
         fromWidth: root.startWidth
         toWidth: Style.ccWidth
         toHeight: root.contentHeight + root.pad * 2
@@ -93,7 +93,8 @@ Item {
             width: Style.ccWidth - root.pad * 2
             active: root.page !== "main" || opacity > 0.01
             opacity: root.page === "main" ? 0 : 1
-            sourceComponent: root.detail === "hotspot" ? hotspotPage
+            sourceComponent: root.detail === "timers" ? timersPage
+                : root.detail === "hotspot" ? hotspotPage
                 : root.detail === "wifi" ? wifiPage : root.detail === "bluetooth" ? bluetoothPage
                 : root.detail === "phone" ? phonePage : root.detail === "tailscale" ? tailscalePage : audioPage
 
@@ -112,4 +113,5 @@ Item {
     Component { id: phonePage; PhonePage {} }
     Component { id: tailscalePage; TailscalePage {} }
     Component { id: hotspotPage; HotspotPage {} }
+    Component { id: timersPage; TimersPage {} }
 }

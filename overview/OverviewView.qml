@@ -49,7 +49,7 @@ Item {
     readonly property real screenW: mon?.width || width
     readonly property real screenH: mon?.height || height
     readonly property int current: OverviewState.activeTag(monitor)
-    readonly property bool searching: OverviewState.query.trim() !== ""
+    readonly property bool searching: OverviewState.typed.trim() !== ""
 
     // ---- Which workspaces ---------------------------------------------------------
     // The ones with windows and yours, then "+" (the first empty one); or
@@ -136,7 +136,7 @@ Item {
     readonly property int heroTag: shown ? current : (OverviewState.closeTag > 0 ? OverviewState.closeTag : current)
 
     // ---- Typing ----------------------------------------------------------------------
-    readonly property var matchList: searching ? OverviewState.matching(OverviewState.query)
+    readonly property var matchList: searching ? OverviewState.matching(OverviewState.typed)
         .filter(c => c.monitor === monitor)
         .sort((a, b) => ((a.tag === current ? 0 : 1) - (b.tag === current ? 0 : 1)) || (a.tag - b.tag) || (a.y - b.y) || (a.x - b.x)) : []
     readonly property var matches: {
@@ -551,6 +551,7 @@ Item {
                     clip: true
                     text: OverviewState.query
                     onTextChanged: OverviewState.query = text
+                    onDisplayTextChanged: OverviewState.typed = displayText
 
                     Keys.onPressed: event => {
                         switch (event.key) {
@@ -590,7 +591,7 @@ Item {
                 }
                 StyledText {
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: input.text === ""
+                    visible: input.displayText === ""
                     text: "Type to find a window"
                     font.pixelSize: Style.textSize("title")
                     color: Colors.textOnSurfaceVariant

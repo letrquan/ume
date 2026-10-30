@@ -22,7 +22,8 @@ FocusScope {
     readonly property var section: sections[shown]
 
     // ---- Search ------------------------------------------------------------------------
-    readonly property alias query: searchField.text
+    // displayText: with the word the IME is still composing.
+    readonly property string query: searchField.displayText
     readonly property bool searching: query.trim() !== ""
     readonly property var found: searching ? SettingsSearch.grouped(query) : null
     // What the page shows: the matches, or null for the section. Follows
@@ -279,7 +280,7 @@ FocusScope {
                     font.pixelSize: Style.textSize("body")
                     color: Colors.textOnSurfaceVariant
                     opacity: 0.7
-                    visible: searchField.text === ""
+                    visible: searchField.displayText === ""
                 }
 
                 Keys.onPressed: event => {
@@ -311,7 +312,7 @@ FocusScope {
                 anchors.rightMargin: 4
                 implicitHeight: 28
                 padding: 0
-                visible: searchField.text !== ""
+                visible: searchField.displayText !== ""
                 onClicked: {
                     searchField.text = "";
                     root.focusSearch();

@@ -60,8 +60,14 @@ PanelWindow {
         anchors.fill: parent
         from: BarPopupState.from
         open: root.ready && BarPopupState.open
-        toWidth: BarPopupState.kind === "battery" ? Style.batteryPopupWidth : Style.drivesPopupWidth
-        body: BarPopupState.kind === "battery" ? battery : drives
+        toWidth: BarPopupState.kind === "battery" ? Style.batteryPopupWidth
+            : BarPopupState.kind === "screentime" ? Style.screenTimePopupWidth
+            : BarPopupState.kind === "aiusage" ? Style.aiUsagePopupWidth
+            : Style.drivesPopupWidth
+        body: BarPopupState.kind === "battery" ? battery
+            : BarPopupState.kind === "screentime" ? screentime
+            : BarPopupState.kind === "aiusage" ? aiusage
+            : drives
         // Back in the item: the window can go.
         onSettledChanged: if (settled && root.ready) BarPopupState.settled()
     }
@@ -73,5 +79,14 @@ PanelWindow {
     Component {
         id: drives
         DrivesPopup {}
+    }
+    // Screen time and AI usage (services/ScreenTime.qml, services/AiUsage.qml).
+    Component {
+        id: screentime
+        ScreenTimePopup {}
+    }
+    Component {
+        id: aiusage
+        AiUsagePopup {}
     }
 }

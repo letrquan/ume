@@ -8,7 +8,7 @@ import qs.overview
 
 // One bar per screen. The window is a see-through strip across the top of
 // the screen (gap + islands) that windows stay out of; the islands float
-// inside it.
+// inside it, or sit in one bar (Style.barStyle).
 PanelWindow {
     id: root
 
@@ -20,8 +20,10 @@ PanelWindow {
         left: true
         right: true
     }
-    implicitHeight: Style.marginEdge + Style.islandHeight
-    exclusiveZone: implicitHeight
+    // "hug" curves into the screen under the bar: drawn here, but windows
+    // may go under the curves.
+    implicitHeight: Style.barBottom + (Style.barStyle === "hug" ? Style.cornerRadius : 0)
+    exclusiveZone: Style.barBottom
     color: "transparent"
 
     // mango blurs layers by name; "mine-bar" isn't on its no-blur list, so
@@ -30,10 +32,10 @@ PanelWindow {
     WlrLayershell.namespace: "mine-bar"
     WlrLayershell.layer: WlrLayer.Top
     mask: Region {
-        item: content.leftIsland
+        item: Style.barJoined ? content.backdrop : content.leftIsland
 
-        Region { item: content.centerIsland }
-        Region { item: content.rightIsland }
+        Region { item: Style.barJoined ? null : content.centerIsland }
+        Region { item: Style.barJoined ? null : content.rightIsland }
         Region { item: hotCorner.active ? hotCorner : null }
     }
 

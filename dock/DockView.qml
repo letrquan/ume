@@ -3,7 +3,7 @@ import Quickshell
 import qs.common
 
 // Everything you see of the dock: a glass bar at the bottom middle with the
-// app icons. Icons near the pointer grow (macOS style), the ones further
+// app icons (near-black like the bar's middle island with Style.dockDark). Icons near the pointer grow (macOS style), the ones further
 // away less; a glass label shows the name of the one under the pointer.
 // Resting on a running app brings up a card with its windows
 // (DockPreview.qml) instead of the label.
@@ -33,6 +33,9 @@ Item {
     readonly property real iconSize: Style.dockIconSize
     readonly property real barHeight: iconSize + Style.dockPaddingCross * 2
     readonly property real rowHeight: iconSize * Style.dockMagnify + 2
+    // The room between pinned and running-only apps: a thin line, or on the
+    // dark dock just space (as the bar has no dividers).
+    readonly property real dividerWidth: Style.dockDark ? 6 : 1
     readonly property bool pointing: !isNaN(previewPointer) || hover.hovered || preview.hovered
     // Pointer distance from the screen's middle (the dock is centred there).
     // Measured against the screen, not the dock: the dock widens as icons
@@ -59,7 +62,7 @@ Item {
         const out = [];
         let x = 0;
         for (const key of DockState.keys) {
-            const w = key === "|" ? 1 : iconSize;
+            const w = key === "|" ? dividerWidth : iconSize;
             out.push(x + w / 2);
             x += w + Style.dockSpacing;
         }
@@ -67,7 +70,7 @@ Item {
     }
     readonly property real baseWidth: baseCenters.length === 0 ? 0
         : DockState.keys.length * Style.dockSpacing - Style.dockSpacing
-          + DockState.keys.reduce((sum, key) => sum + (key === "|" ? 1 : iconSize), 0)
+          + DockState.keys.reduce((sum, key) => sum + (key === "|" ? dividerWidth : iconSize), 0)
 
     function scaleFor(index) {
         if (growth <= 0.001 || DockState.keys[index] === "|")
@@ -211,7 +214,13 @@ Item {
             opacity: root.introOpacity
             transform: Translate { y: root.introY }
             radius: Style.dockRadius
-            color: Style.alpha(Colors.surfaceContainer, Style.dockOpacity)
+            color: Style.dockDark ? Style.alpha(Colors.surfaceContainerLowest, Style.barIslandOpacity)
+                : Style.alpha(Colors.surfaceContainer, Style.dockOpacity)
+            // Dark: as the bar's middle island (Island.qml), a faint edge
+            // and no light on it.
+            liquid: !Style.dockDark && Style.glassStyle === "liquid"
+            sheen: !Style.dockDark
+            border.color: Style.dockDark ? "#0affffff" : liquid ? Style.glassBorder : Style.islandBorder
         }
 
         Row {
@@ -258,10 +267,15 @@ Item {
             NumberAnimation { duration: Motion.fast; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.fastSpatial }
         }
 
+        // A little island of its own: dark on the dark dock.
         Glass {
             anchors.fill: parent
             radius: height / 2
-            color: Style.alpha(Colors.surfaceContainer, 0.85)
+            color: Style.dockDark ? Style.alpha(Colors.surfaceContainerLowest, Style.barIslandOpacity)
+                : Style.alpha(Colors.surfaceContainer, 0.85)
+            liquid: !Style.dockDark && Style.glassStyle === "liquid"
+            sheen: !Style.dockDark
+            border.color: Style.dockDark ? "#0affffff" : liquid ? Style.glassBorder : Style.islandBorder
         }
 
         StyledText {

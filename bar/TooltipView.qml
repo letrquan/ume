@@ -55,7 +55,7 @@ Item {
 
     readonly property real padX: 12
     readonly property real padY: 7
-    readonly property real pillTop: Style.marginEdge + Style.islandHeight + Style.tooltipGap
+    readonly property real pillTop: Style.barBottom + Style.tooltipGap
     readonly property real fullWidth: Math.ceil(content.implicitWidth) + padX * 2
     readonly property real fullHeight: Math.ceil(content.implicitHeight) + padY * 2
 

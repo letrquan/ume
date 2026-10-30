@@ -22,9 +22,10 @@ Rectangle {
         activities: 55, sounds: 345, launcher: 265, panels: 180, keyboard: -1,
         wallpaper: 195, desktop: 240, screenshots: 285, recording: 12,
         power: 145, lock: -1, calendar: 30, about: -1, search: -1,
-        controlcenter: 160
+        controlcenter: 160,
+        desk: 85
     })
-    readonly property real hue: hues[section] ?? -1
+    property real hue: hues[section] ?? -1
     readonly property var source: Tc.toOklch(Colors.primary.toString())
     readonly property color base: {
         const grey = hue < 0;

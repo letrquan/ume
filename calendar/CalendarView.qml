@@ -128,7 +128,7 @@ Item {
 
         anchors.fill: parent
         fromX: (width - root.startWidth) / 2
-        fromY: Style.marginEdge
+        fromY: Style.islandTop
         fromWidth: root.startWidth
         toWidth: Style.calendarWidth
         toHeight: content.implicitHeight + root.pad * 2

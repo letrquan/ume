@@ -21,12 +21,12 @@ Item {
     readonly property bool settled: !open && t === 0
 
     readonly property rect origin: from.width > 0 ? from
-        : Qt.rect(width - Style.marginEnds - 48, Style.marginEdge, 40, Style.islandHeight)
+        : Qt.rect(width - Style.islandSide - 48, Style.islandTop, 40, Style.islandHeight)
 
     // ---- Where the card goes ----------------------------------------------------------------
     readonly property real toX: Math.max(Style.marginEdge,
         Math.min(width - toWidth - Style.marginEdge, origin.x + origin.width / 2 - toWidth / 2))
-    readonly property real toY: Style.marginEdge + Style.islandHeight + Style.osdGap
+    readonly property real toY: Style.barBottom + Style.osdGap
     property real toHeight: (loader.item?.implicitHeight ?? 0) + 2 * pad
     Behavior on toHeight {
         NumberAnimation { duration: Motion.resize; easing.type: Easing.BezierSpline; easing.bezierCurve: Motion.emphasized }

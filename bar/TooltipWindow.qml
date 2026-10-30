@@ -19,7 +19,7 @@ PanelWindow {
         left: true
         right: true
     }
-    implicitHeight: Style.marginEdge + Style.islandHeight + Style.tooltipGap + 150
+    implicitHeight: Style.barBottom + Style.tooltipGap + 150
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     mask: Region {}

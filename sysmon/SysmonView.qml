@@ -109,10 +109,10 @@ Item {
 
         anchors.fill: parent
         grow: root.island === "left" ? "left" : root.island === "right" ? "right" : "center"
-        fromX: root.island === "left" ? Style.marginEnds
-             : root.island === "right" ? width - Style.marginEnds - root.startWidth
+        fromX: root.island === "left" ? Style.islandSide
+             : root.island === "right" ? width - Style.islandSide - root.startWidth
              : (width - root.startWidth) / 2
-        fromY: Style.marginEdge
+        fromY: Style.islandTop
         fromWidth: root.startWidth
         toWidth: Style.sysmonWidth
         toHeight: content.implicitHeight + root.pad * 2

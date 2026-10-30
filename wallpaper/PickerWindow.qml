@@ -56,7 +56,7 @@ PanelWindow {
 
         anchors.fill: parent
         fromX: (width - IslandState.centerWidth) / 2
-        fromY: Style.marginEdge
+        fromY: Style.islandTop
         fromWidth: IslandState.centerWidth
         toWidth: panel.implicitWidth
         toHeight: panel.implicitHeight

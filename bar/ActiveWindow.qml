@@ -80,7 +80,8 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
 
-            Divider {}
+            // (In one bar, only the room.)
+            Divider { opacity: Style.barJoined ? 0 : 1 }
 
             AppIcon {
                 anchors.verticalCenter: parent.verticalCenter

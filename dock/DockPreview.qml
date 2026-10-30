@@ -84,10 +84,16 @@ Item {
         onTriggered: root.shoot()
     }
 
+    // Out of the dark dock (Style.dockDark): dark too, as the cards out of
+    // the bar's middle island (MorphCard).
     Glass {
         anchors.fill: parent
         radius: 20
-        color: Style.alpha(Colors.surfaceContainer, 0.85)
+        color: Style.dockDark && Style.barIslandCards ? Style.alpha(Colors.surfaceContainerLowest, Style.barIslandCardOpacity)
+            : Style.alpha(Colors.surfaceContainer, 0.85)
+        rimScale: Style.dockDark && Style.barIslandCards ? 0 : 1
+        border.color: Style.dockDark && Style.barIslandCards ? Style.alpha(Style.islandBorder, Math.min(Style.islandBorder.a, 0.06))
+            : liquid ? Style.glassBorder : Style.islandBorder
     }
 
     Row {

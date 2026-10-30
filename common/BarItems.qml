@@ -24,6 +24,7 @@ Singleton {
         { name: "media", label: "Now playing", icon: "music_note", desc: "Song and controls, while something plays" },
         { name: "tray", label: "Tray icons", icon: "widgets", desc: "Discord, Steam, …" },
         { name: "updates", label: "Updates", icon: "deployed_code_update", desc: "How many packages wait (repos, AUR, Flatpak), while some do; click: the updates panel (or a terminal), right click: check now" },
+        { name: "status", label: "Status", icon: "wifi", desc: "Wi-Fi, volume and battery as one button: click for the control center, scroll for volume (the battery's number shows while low or charging)" },
         { name: "network", label: "Network", icon: "wifi", desc: "Wi-Fi or wired" },
         { name: "bluetooth", label: "Bluetooth", icon: "bluetooth", desc: "" },
         { name: "volume", label: "Volume", icon: "volume_up", desc: "Click: volume popup, scroll to change" },
@@ -45,6 +46,11 @@ Singleton {
         { name: "netspeed", label: "Network speed", icon: "arrow_downward", desc: "Download (hover: upload)" },
         { name: "disk", label: "Disk", icon: "hard_drive", desc: "How full / is" },
         { name: "drives", label: "USB drives", icon: "usb", desc: "While a USB drive or SD card is plugged in; click: its size and free space, Open and Eject" },
+        // Screen time and AI usage (services/ScreenTime.qml, services/AiUsage.qml).
+        { name: "screentime", label: "Screen time", icon: "hourglass_bottom", desc: "Today's time on the screen; click: per app, the last 7 days and break reminders" },
+        { name: "aiusage", label: "AI usage", icon: "data_usage", desc: "Claude's 5-hour and weekly limits and Codex's, as rings, while signed in; click: details and reset times" },
+        // The timer (services/Timers.qml).
+        { name: "timers", label: "Timer", icon: "hourglass_top", desc: "The time left while a timer runs (or a bell while one rings); click: pause or stop, right click: cancel" },
         { name: "divider", label: "Divider", icon: "more_vert", desc: "A thin line between groups" }
     ]
 

@@ -113,6 +113,19 @@ Singleton {
             entry.execute();
     }
 
+    // One of the app's own actions (Apps.actionsOf: "New Private Window"…).
+    function launchAction(item, action) {
+        const entry = item?.entry;
+        if (!entry || !action)
+            return;
+        if (dryRun)
+            console.log("dock (dry run): action", entry.id, action.id);
+        else if (entry.runInTerminal)
+            Quickshell.execDetached(["xdg-terminal-exec"].concat(action.command));
+        else
+            action.execute();
+    }
+
     function closeAll(item) {
         for (const t of item?.toplevels ?? []) {
             if (dryRun)

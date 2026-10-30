@@ -20,7 +20,7 @@ PanelWindow {
     anchors.top: true
     exclusionMode: ExclusionMode.Ignore
     implicitWidth: Math.max(Style.activityMaxWidth, IslandState.centerWidth) + 40
-    implicitHeight: Style.marginEdge + Style.activityHeight + 12
+    implicitHeight: Style.islandTop + Style.activityHeight + 12
     color: "transparent"
 
     WlrLayershell.namespace: "mine-activity"

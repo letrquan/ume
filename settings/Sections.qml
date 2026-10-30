@@ -104,6 +104,10 @@ Singleton {
                     { name: "islandBorder", kind: "text", label: "Edge color", desc: "#AARRGGBB (alpha first) or #RRGGBB", placeholder: "#1fffffff", commit: t => root.setColor("islandBorder", t) },
                     { name: "glassStyle", kind: "choice", label: "Glass style", desc: "Liquid: light catches the glass edge, a glow inside the top, a shade inside the bottom",
                       choices: [{ value: "liquid", label: "Liquid" }, { value: "flat", label: "Flat" }] },
+                    { name: "shapeStyle", kind: "choice", label: "Shapes", desc: "Behind icons: Material's cookies, clovers and bursts, or plain circles",
+                      choices: [{ value: "expressive", label: "Expressive" }, { value: "simple", label: "Circles" }] },
+                    { name: "tileStyle", kind: "choice", label: "Control center tiles", desc: "An on tile fills with the accent, or stays calm with only its icon's circle in the accent",
+                      choices: [{ value: "filled", label: "Filled" }, { value: "calm", label: "Calm" }] },
                     { name: "glassRim", kind: "number", label: "Rim light", desc: "The edge facing the light", from: 0, to: 0.8, step: 0.02, format: root.percent },
                     { name: "glassRimBack", kind: "number", label: "Far glint", desc: "The edge away from the light", from: 0, to: 0.5, step: 0.02, format: root.percent },
                     { name: "glassGlow", kind: "number", label: "Inner glow", desc: "Light just inside the top edge", from: 0, to: 0.25, step: 0.01, format: root.percent },
@@ -162,8 +166,22 @@ Singleton {
             id: "bar", title: "Bar", icon: "view_agenda",
             blurb: "The three islands at the top.",
             groups: [
+                { title: "Style", rows: [
+                    { name: "barStyle", kind: "choice", label: "Bar", desc: "Islands float apart; the others hold them in one bar: Float a rounded one inside the gaps, Hug against the top edge curving into the screen, Plain a flat strip",
+                      choices: [{ value: "islands", label: "Islands" }, { value: "float", label: "Float" }, { value: "hug", label: "Hug" }, { value: "plain", label: "Plain" }] },
+                    { name: "barHeight", kind: "number", label: "Bar height", desc: "One bar: how tall it is (Islands use the height below)", from: 30, to: 48, step: 1, format: root.px },
+                    { name: "barPad", kind: "number", label: "Bar padding", desc: "One bar: its edge to the middle island", from: 0, to: 8, step: 1, format: root.px },
+                    { name: "barOpacity", kind: "number", label: "Bar tint", desc: "One bar: how tinted its glass is", from: 0.2, to: 0.95, step: 0.05, format: root.percent },
+                    { name: "barCenterIsland", kind: "bool", label: "Middle island", desc: "One bar: the clock island stays an island of its own" },
+                    { name: "barIslandDark", kind: "bool", label: "Dark island", desc: "One bar: the middle island near-black, like a dynamic island (off: glass)" },
+                    { name: "barIslandOpacity", kind: "number", label: "Island darkness", desc: "", from: 0.5, to: 1, step: 0.02, format: root.percent },
+                    { name: "barIslandCards", kind: "bool", label: "Dark cards", desc: "What grows out of the dark island (notifications, launcher, calendar, the player…) stays dark" },
+                    { name: "barIslandCardOpacity", kind: "number", label: "Card darkness", desc: "", from: 0.5, to: 1, step: 0.02, format: root.percent },
+                    { name: "barGroups", kind: "bool", label: "Side groups", desc: "One bar: a soft pill behind the left and right things" },
+                    { name: "barGroupTint", kind: "number", label: "Group tint", desc: "", from: 0.02, to: 0.2, step: 0.01, format: root.percent }
+                ] },
                 { title: "Islands", rows: [
-                    { name: "islandHeight", kind: "number", label: "Height", desc: "", from: 28, to: 48, step: 1, format: root.px },
+                    { name: "islandHeight", kind: "number", label: "Height", desc: "Islands style", from: 28, to: 48, step: 1, format: root.px },
                     { name: "islandRadius", kind: "number", label: "Corners", desc: "Half the height is a full pill", from: 6, to: 24, step: 1, format: root.px },
                     { name: "marginEdge", kind: "number", label: "Gap from the top", desc: "", from: 0, to: 20, step: 1, format: root.px },
                     { name: "marginEnds", kind: "number", label: "Gap at the sides", desc: "", from: 0, to: 40, step: 1, format: root.px },
@@ -187,6 +205,8 @@ Singleton {
                     { name: "visualizerFps", kind: "number", label: "Smoothness", desc: "How often the bars move; less uses less power", from: 10, to: 30, step: 5, format: v => Math.round(v) + " fps" }
                 ] },
                 { title: "Workspaces and the rest", rows: [
+                    { name: "workspaceStyle", kind: "choice", label: "Workspaces as", desc: "Slots: numbers or app icons; dots: a dot each, the current one a long pill",
+                      choices: [{ value: "slots", label: "Slots" }, { value: "dots", label: "Dots" }] },
                     { name: "workspacesShown", kind: "number", label: "Workspaces shown", desc: "At least this many; more appear when used", from: 1, to: 9, step: 1, format: root.count },
                     { name: "workspaceSlot", kind: "number", label: "Workspace size", desc: "", from: 16, to: 36, step: 1, format: root.px },
                     { name: "workspaceIcons", kind: "bool", label: "App icons on workspaces", desc: "A workspace with windows shows their apps instead of its number" },
@@ -276,6 +296,13 @@ Singleton {
                     { name: "dockPreviewDelay", kind: "number", label: "Show previews after", desc: "Resting on the icon", from: 0, to: 1500, step: 50, format: root.ms },
                     { name: "dockPreviewSize", kind: "number", label: "Preview size", desc: "Height of each picture", from: 80, to: 260, step: 10, format: root.px }
                 ] },
+                // Dock badges
+                { title: "Badges", rows: [
+                    { name: "dockBadges", kind: "bool", label: "Unread counts on icons", desc: "A red number on an app with unread messages (Discord, Telegram…)" },
+                    { name: "dockBadgeSource", kind: "choice", label: "Count from", desc: "Apps: what the app itself tells docks (not every app does). Notifications: its unread notifications. Both: the app's own count when it gives one",
+                      choices: [{ value: "both", label: "Both" }, { value: "apps", label: "Apps" }, { value: "notifications", label: "Notifications" }] },
+                    { name: "dockBadgeProgress", kind: "bool", label: "Progress bar", desc: "A thin bar on the icon while the app says it's busy (a download, a copy)" }
+                ] },
                 { title: "Look", rows: [
                     { name: "dockIconSize", kind: "number", label: "Icon size", desc: "", from: 28, to: 64, step: 2, format: root.px },
                     { name: "dockMagnify", kind: "number", label: "Magnification", desc: "How big the icon under the pointer grows (1× = off)", from: 1, to: 2, step: 0.05, format: root.times },
@@ -285,7 +312,8 @@ Singleton {
                     { name: "dockPaddingCross", kind: "number", label: "Padding above and below", desc: "", from: 0, to: 20, step: 1, format: root.px },
                     { name: "dockMarginEdge", kind: "number", label: "Gap from the bottom", desc: "", from: 0, to: 24, step: 1, format: root.px },
                     { name: "dockRadius", kind: "number", label: "Corners", desc: "", from: 0, to: 32, step: 1, format: root.px },
-                    { name: "dockOpacity", kind: "number", label: "Glass", desc: "", from: 0.2, to: 0.95, step: 0.05, format: root.percent }
+                    { name: "dockDark", kind: "bool", label: "Dark dock", desc: "Near-black, like the bar's middle island (Bar → Style); its label, previews and menu too" },
+                    { name: "dockOpacity", kind: "number", label: "Glass", desc: "When it isn't dark", from: 0.2, to: 0.95, step: 0.05, format: root.percent }
                 ] }
             ]
         },
@@ -397,6 +425,15 @@ Singleton {
                     { name: "fileSearchRoot", kind: "text", label: "Look for files in", desc: "A folder; ~ is your home", placeholder: "~" },
                     { name: "launcherWeb", kind: "bool", label: "Web", desc: "Type ? to search; a web address opens it" },
                     { name: "webSearchUrl", kind: "text", label: "Search engine", desc: "%s is what you typed", placeholder: "https://www.google.com/search?q=%s" }
+                ] },
+                // Launcher: translate (tr hello)
+                { title: "Translate", rows: [
+                    { name: "launcherTranslate", kind: "bool", label: "Translate with tr", desc: "Type tr and some text (tr ja: hello for Japanese); Enter copies the translation. The text goes to Google Translate, only once you stop typing" }
+                ] },
+                // Launcher: app grid
+                { title: "App grid", rows: [
+                    { name: "launcherGridInTablet", kind: "bool", label: "Open as a grid in tablet mode", desc: "Every app as a big tile, with groups on top. The ▦ button in the launcher (or mine launcher grid) shows it any time" },
+                    { name: "launcherGridIconSize", kind: "number", label: "Grid icon size", desc: "A fifth bigger in tablet mode", from: 44, to: 96, step: 4, format: root.px }
                 ] },
                 { title: "Clipboard", rows: [
                     { name: "clipAutoPaste", kind: "bool", label: "Paste right away", desc: "Picking an entry pastes it into the app you were in" },
@@ -841,6 +878,77 @@ Singleton {
                     { name: "calendarWidth", kind: "number", label: "Width", desc: "", from: 320, to: 480, step: 10, format: root.px },
                     { name: "calendarRadius", kind: "number", label: "Corners", desc: "", from: 12, to: 40, step: 1, format: root.px },
                     { name: "calendarDaySize", kind: "number", label: "Day number", desc: "Today's big number", from: 24, to: 56, step: 2, format: root.px }
+                ] }
+            ]
+        },
+        // Screen time, break reminders, AI usage (services/ScreenTime.qml,
+        // services/Breaks.qml, services/AiUsage.qml).
+        {
+            id: "usage", title: "Screen time", icon: "hourglass_bottom",
+            blurb: "Time on the screen per app, reminders to take a break, and your Claude and Codex limits. \"Screen time\" and \"AI usage\" are in Bar items.",
+            groups: [
+                { title: "Screen time", rows: [
+                    { name: "screenTime", kind: "bool", label: "Count screen time", desc: "The focused app, while the screen is on, not locked and you're there; kept on this computer only",
+                      status: () => !Style.screenTime ? "" : "Today " + ScreenTime.durationText(ScreenTime.totalOn(ScreenTime.today, Date.now() + ScreenTime.revision * 0), false)
+                          + (ScreenTime.current !== "" ? " · now " + ScreenTime.appName(ScreenTime.current) : "") },
+                    { name: "screenTimeIdle", kind: "number", label: "Stops after no input for", desc: "Counted up to your last input; a fullscreen window or a playing video goes on",
+                      from: 60, to: 900, step: 30, format: root.after },
+                    { name: "screenTimeDays", kind: "number", label: "Keep", desc: "", from: 7, to: 90, step: 1, format: v => Math.round(v) + " days" },
+                    { name: "screenTimePopupWidth", kind: "number", label: "Popup width", desc: "", from: 300, to: 440, step: 10, format: root.px }
+                ] },
+                { title: "Break reminders", rows: [
+                    { name: "breakReminders", kind: "bool", label: "Remind me to take a break", desc: "A notification with Snooze and Take a break; not while fullscreen, sharing the screen or Silent",
+                      status: () => Breaks.detail },
+                    { name: "breakAfter", kind: "number", label: "After", desc: "On the screen without a real break", from: 20, to: 120, step: 5, format: v => Math.round(v) + " min" },
+                    { name: "breakResetAfter", kind: "number", label: "A real break is", desc: "Away this long (no input, locked, asleep): the clock starts over", from: 2, to: 20, step: 1, format: v => Math.round(v) + " min" },
+                    { name: "breakSnooze", kind: "number", label: "Snooze", desc: "", from: 5, to: 30, step: 5, format: v => Math.round(v) + " min" },
+                    { name: "breakLength", kind: "number", label: "Take a break: countdown", desc: "The screen dims with a countdown; Skip or Esc ends it", from: 1, to: 15, step: 1, format: v => Math.round(v) + " min" },
+                    { name: "breakDim", kind: "number", label: "Darken during the break", desc: "", from: 0, to: 0.8, step: 0.05, format: root.percent },
+                    { name: "breakEyes", kind: "bool", label: "20-20-20 eye reminder", desc: "Every few minutes on the screen: look 20 seconds at something 6 m away" },
+                    { name: "breakEyesEvery", kind: "number", label: "Eye reminder every", desc: "", from: 10, to: 60, step: 5, format: v => Math.round(v) + " min" }
+                ] },
+                { title: "AI usage", rows: [
+                    { kind: "info", label: "Signed in", text: () => [AiUsage.claude.present ? "Claude" + (AiUsage.claude.phase === "expired" ? " (sign-in expired)" : "") : "",
+                                                                      AiUsage.codex.present ? "Codex" + (AiUsage.codex.phase === "expired" ? " (sign-in expired)" : "") : ""]
+                          .filter(t => t !== "").join(" · ") || "Neither Claude Code nor Codex" },
+                    { name: "aiUsagePoll", kind: "number", label: "Check every", desc: "Only while \"AI usage\" is on the bar or its popup is open", from: 1, to: 30, step: 1, format: v => Math.round(v) + " min" },
+                    { name: "aiUsageNotify", kind: "bool", label: "Notify when a limit gets close", desc: "Once per window at each of the two levels below" },
+                    { name: "aiUsageWarnAt", kind: "number", label: "Getting close at", desc: "Orange ring (unless the service says otherwise)", from: 50, to: 95, step: 5, format: v => Math.round(v) + "%" },
+                    { name: "aiUsageCriticalAt", kind: "number", label: "Nearly out at", desc: "Red ring", from: 80, to: 100, step: 1, format: v => Math.round(v) + "%" },
+                    { name: "aiUsageWarnColor", kind: "text", label: "Getting close: color", desc: "#RRGGBB or a name; nearly out uses the error color", placeholder: "#ff9f0a",
+                      commit: t => root.setColor("aiUsageWarnColor", t) },
+                    { name: "aiUsagePopupWidth", kind: "number", label: "Popup width", desc: "", from: 300, to: 440, step: 10, format: root.px }
+                ] }
+            ]
+        },
+        // ---- Drawing on the screen, notes, timers ----------------------------------------
+        {
+            id: "desk", title: "Notes, drawing & timers", icon: "edit_note",
+            blurb: "Draw on the screen with the pen, notes and to-dos (with the pen or the on-screen keyboard), and a timer, a stopwatch and alarms. Each has a control center tile (Edit there to add it).",
+            groups: [
+                // Timer, stopwatch, alarms (services/Timers.qml).
+                { title: "Timer and alarms", rows: [
+                    { name: "timersSnoozeMinutes", kind: "number", label: "Snooze", desc: "An alarm's Snooze button", from: 1, to: 30, step: 1, format: v => Math.round(v) + " min" },
+                    { name: "timersRingSeconds", kind: "number", label: "Rings for", desc: "Then the sound stops by itself; the notification stays", from: 10, to: 300, step: 10, format: root.after },
+                    { name: "timersRingInSilent", kind: "bool", label: "Ring in Silent", desc: "A timer or an alarm rings and pops up even while notifications are muted" },
+                    { name: "timersVolume", kind: "number", label: "Volume", desc: "Of the alarm sound, under the system volume", from: 0.1, to: 1, step: 0.05, format: root.percent },
+                    { kind: "info", label: "While the laptop sleeps", text: () => "Nothing rings: the shell can't wake it. A timer or an alarm whose time came then says it was missed when you're back." }
+                ] },
+                // Drawing on the screen (services/Ink.qml).
+                { title: "Draw on the screen", rows: [
+                    { kind: "info", label: "How", text: () => "The \"Draw on screen\" tile, or: qs -c mine ipc call ink toggle. Esc or × ends it (the ink goes too); the arrow button lets you use the apps with the ink still on screen" },
+                    { name: "inkTouch", kind: "bool", label: "Draw with a finger too", desc: "Off: only the pen and the mouse draw, so a palm resting on the screen doesn't" },
+                    { name: "inkFadeSeconds", kind: "number", label: "Strokes fade after", desc: "For pointing things out: each stroke goes by itself", from: 0, to: 30, step: 1,
+                      format: v => v <= 0 ? "Never" : Math.round(v) + " s" },
+                    { name: "inkToolbarOpacity", kind: "number", label: "Toolbar glass", desc: "", from: 0.5, to: 1, step: 0.05, format: root.percent }
+                ] },
+                // Notes and to-dos (services/Notes.qml).
+                { title: "Notes", rows: [
+                    root.widgetRow("notes", "Note on the desktop", "The pinned note (or the newest): tick items right there, click to open it"),
+                    { name: "notesCollapseDone", kind: "bool", label: "Fold away done items", desc: "A checklist's ticked items go under \"N done\"" },
+                    { name: "notesWidth", kind: "number", label: "Panel width", desc: "", from: 340, to: 560, step: 10, format: root.px },
+                    { name: "notesHeight", kind: "number", label: "Panel height", desc: "At most; less above the on-screen keyboard", from: 400, to: 900, step: 20, format: root.px },
+                    { name: "notesOpacity", kind: "number", label: "Panel glass", desc: "", from: 0.5, to: 0.98, step: 0.02, format: root.percent }
                 ] }
             ]
         },

@@ -21,7 +21,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     implicitWidth: Math.max(Style.notifWidth, 560) + 40
     // (+ room for the reply field)
-    implicitHeight: Style.marginEdge + Style.notifMaxHeight + 66
+    implicitHeight: Style.islandTop + Style.notifMaxHeight + 66
     color: "transparent"
 
     WlrLayershell.namespace: "mine-notifications"

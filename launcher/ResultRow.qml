@@ -4,16 +4,20 @@ import qs.common
 
 // One launcher result: an app or file icon (or a shape with a glyph for
 // the calculator, web and hint rows), the name, and a quiet description
-// (a file's folder).
+// (a file's folder). A selected app shows "→ Actions": its menu (AppMenu),
+// also on a right click or a long press.
 Item {
     id: root
 
     required property var modelData
     required property int index
     property bool selected: false
+    // The "→ Actions" chip (the launcher decides: selected apps).
+    property bool actionsHint: false
 
     signal hoveredRow(int index)
     signal chosen(int index)
+    signal menuRequested(int index)
 
     readonly property bool isApp: modelData.kind === "app" || modelData.kind === "file"
     readonly property bool isHint: modelData.kind === "hint"
@@ -25,17 +29,64 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: root.isHint ? Qt.ArrowCursor : Qt.PointingHandCursor
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         // Only a real mouse move selects, so scrolling with the keys
         // doesn't fight a still cursor.
         onPositionChanged: root.hoveredRow(root.index)
-        onClicked: root.chosen(root.index)
+        onClicked: mouse => {
+            if (mouse.button === Qt.RightButton) {
+                if (root.modelData.kind === "app")
+                    root.menuRequested(root.index);
+            } else {
+                root.chosen(root.index);
+            }
+        }
+        onPressAndHold: mouse => {
+            if (root.modelData.kind === "app")
+                root.menuRequested(root.index);
+        }
+    }
+
+    // "→ Actions": the key that opens the app's menu.
+    Row {
+        id: chip
+        anchors.right: parent.right
+        anchors.rightMargin: 12
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: 5
+        opacity: root.actionsHint ? 1 : 0
+        visible: opacity > 0.01
+        Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+
+        Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            width: 20
+            height: 18
+            radius: 5
+            color: "transparent"
+            border.width: 1
+            border.color: Style.alpha(Colors.textOnSurface, 0.22)
+
+            StyledText {
+                anchors.centerIn: parent
+                text: "→"
+                role: "micro"
+                color: Colors.primary
+            }
+        }
+        StyledText {
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Actions"
+            role: "caption"
+            color: Colors.textOnSurfaceVariant
+        }
     }
 
     Row {
         anchors.left: parent.left
         anchors.leftMargin: 12
         anchors.right: parent.right
-        anchors.rightMargin: 12
+        anchors.rightMargin: 12 + (root.actionsHint ? chip.implicitWidth + 10 : 0)
         anchors.verticalCenter: parent.verticalCenter
         spacing: 12
 

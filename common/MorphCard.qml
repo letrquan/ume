@@ -112,6 +112,16 @@ Item {
         onTriggered: root.cardShown = false
     }
 
+    // In one bar (Style.barJoined) a side island is a group with no glass
+    // of its own; the middle one keeps its glass (Style.barCenterIsland).
+    readonly property bool fromGroup: Style.barJoined && !(grow === "center" && Style.barCenterIsland)
+    // ...and that one may be near-black instead of glass (Style.barIslandDark).
+    readonly property bool fromDark: Style.barJoined && grow === "center" && Style.barCenterIsland && Style.barIslandDark
+    // Out of a group or the dark island: no glass edge to start with.
+    readonly property bool plainStart: fromGroup || fromDark
+    // ...and out of the dark island it stays dark, edge and all.
+    readonly property bool darkCard: fromDark && Style.barIslandCards
+
     readonly property real currentWidth: fromWidth + (toWidth - fromWidth) * t
     readonly property real currentHeight: fromHeight + (targetHeight - fromHeight) * t
 
@@ -129,15 +139,38 @@ Item {
         Glass {
             anchors.fill: parent
             radius: Style.islandRadius + (root.radius - Style.islandRadius) * root.t
+            // It starts as exactly what it grows out of and gets its own
+            // glass on the way; out of a group (fromGroup) that has no
+            // glass edge, so the edge light comes in with it too.
             color: {
                 const base = Colors.surfaceContainer;
-                const a = Style.islandOpacity + (root.glassOpacity - Style.islandOpacity) * root.t;
-                const s = root.tint.a > 0 ? Math.max(0, Math.min(1, root.tintStrength)) * root.t : 0;
-                return Qt.rgba(base.r + (root.tint.r - base.r) * s, base.g + (root.tint.g - base.g) * s,
-                               base.b + (root.tint.b - base.b) * s, a);
+                const s = root.tint.a > 0 ? Math.max(0, Math.min(1, root.tintStrength)) : 0;
+                // Out of the dark island it stays dark (Style.barIslandCards).
+                const ground = root.darkCard ? Colors.surfaceContainerLowest : base;
+                const to = Qt.rgba(ground.r + (root.tint.r - ground.r) * s, ground.g + (root.tint.g - ground.g) * s,
+                                   ground.b + (root.tint.b - ground.b) * s,
+                                   root.darkCard ? Style.barIslandCardOpacity : root.glassOpacity);
+                // What it stands in for: the island's glass, or (one bar)
+                // that or the group's pill (if any) over the bar's glass.
+                const o = Style.islandOpacity;
+                const k = root.fromDark ? Style.barIslandOpacity
+                        : root.fromGroup ? (Style.barGroups ? Style.barGroupTint : 0) : o;
+                const top = root.fromDark ? Colors.surfaceContainerLowest : root.fromGroup ? Colors.textOnSurface : base;
+                const under = Style.barJoined ? Style.barOpacity : 0;
+                const fa = Math.max(0.001, k + under * (1 - k));
+                const from = Qt.rgba((k * top.r + under * (1 - k) * base.r) / fa, (k * top.g + under * (1 - k) * base.g) / fa,
+                                     (k * top.b + under * (1 - k) * base.b) / fa, fa);
+                const t = root.t;
+                return Qt.rgba(from.r + (to.r - from.r) * t, from.g + (to.g - from.g) * t,
+                               from.b + (to.b - from.b) * t, from.a + (to.a - from.a) * t);
             }
-            border.color: root.borderColor
-            Behavior on border.color { ColorAnimation { duration: Motion.normal } }
+            rimScale: root.darkCard ? 0 : root.plainStart ? root.t : 1
+            border.color: root.darkCard ? Style.alpha(root.borderColor, Math.min(root.borderColor.a, 0.06) * root.t)
+                : root.plainStart ? Style.alpha(root.borderColor, root.borderColor.a * root.t) : root.borderColor
+            Behavior on border.color {
+                enabled: !root.plainStart
+                ColorAnimation { duration: Motion.normal }
+            }
         }
 
         // The content: clipped to the card, slides in near the end of the

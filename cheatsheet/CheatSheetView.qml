@@ -245,8 +245,9 @@ Item {
                     font.pixelSize: Style.textSize("body")
                     font.variableAxes: ({ "wght": 500, "ROND": 100 })
                     clip: true
-                    onTextChanged: {
-                        root.query = text;
+                    // displayText: with the word the IME is still composing.
+                    onDisplayTextChanged: {
+                        root.query = displayText;
                         scroll.contentY = 0;
                     }
 
@@ -256,7 +257,7 @@ Item {
                         font.pixelSize: Style.textSize("body")
                         color: Colors.textOnSurfaceVariant
                         opacity: 0.7
-                        visible: input.text === ""
+                        visible: input.displayText === ""
                     }
 
                     Keys.onPressed: event => {

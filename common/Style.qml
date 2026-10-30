@@ -17,7 +17,9 @@ import Quickshell
 // (and a row in settings/Sections.qml to show it in the window).
 Singleton {
     // ---- Islands: the three floating glass pills --------------------------------
-    readonly property int islandHeight: Settings.values.islandHeight ?? 36
+    // (In one bar, Style.barStyle, the islands are the bar's height minus
+    // its padding: barHeight - 2 * barPad.)
+    readonly property int islandHeight: barJoined ? barHeight - 2 * barPad : Settings.values.islandHeight ?? 36
     readonly property int marginEdge: Settings.values.marginEdge ?? 6    // gap between the screen top and the islands
     readonly property int marginEnds: Settings.values.marginEnds ?? 8    // gap at the left and right screen edges
     readonly property int islandRadius: Settings.values.islandRadius ?? 18    // islandHeight / 2 = full pill
@@ -30,6 +32,13 @@ Singleton {
     // just inside the lit edge and a little shade inside the bottom one, all
     // inside the pane. "flat": the plain tint and edge line only.
     readonly property string glassStyle: Settings.values.glassStyle ?? "liquid"
+    // "expressive": Material 3's shapes behind icons (cookies, clovers,
+    // bursts), morphing with state. "simple": circles everywhere (the bar's
+    // launcher keeps its own).
+    readonly property string shapeStyle: Settings.values.shapeStyle ?? "expressive"
+    // Control center tiles. "filled": an on tile fills with the accent.
+    // "calm": tiles stay neutral, only the icon's circle turns accent.
+    readonly property string tileStyle: Settings.values.tileStyle ?? "filled"
     readonly property color glassBorder: Settings.values.glassBorder ?? "#12ffffff"    // the even edge line under the rim (liquid only; flat uses islandBorder)
     readonly property real glassLightAngle: Settings.values.glassLightAngle ?? 25    // degrees the light sits left of straight above (negative = right)
     readonly property real glassRim: Settings.values.glassRim ?? 0.75    // the rim facing the light
@@ -46,6 +55,31 @@ Singleton {
     readonly property int dropInDelay: Settings.values.dropInDelay ?? 70    // ms between islands dropping in at start
     readonly property bool startupIntro: Settings.values.startupIntro ?? true    // at start: the wallpaper fades in, then the bar, dock and desktop come in (common/Intro.qml)
 
+    // ---- Bar style -------------------------------------------------------------------
+    // "islands": the three pills float apart. The others put them in one bar
+    // across the screen, as groups: "float" a rounded bar inside the gaps,
+    // "hug" against the top edge and curving into the screen at both ends,
+    // "plain" a flat strip.
+    readonly property string barStyle: Settings.values.barStyle ?? "islands"
+    readonly property bool barJoined: barStyle === "float" || barStyle === "hug" || barStyle === "plain"
+    readonly property int barHeight: Settings.values.barHeight ?? 34    // one bar: how tall it is
+    readonly property int barPad: Settings.values.barPad ?? 3    // one bar: its edge -> the groups inside
+    readonly property real barOpacity: Settings.values.barOpacity ?? 0.62    // one bar: its glass tint
+    readonly property bool barIslandDark: Settings.values.barIslandDark ?? true    // one bar: the middle island near-black, like a dynamic island (off: glass)
+    readonly property real barIslandOpacity: Settings.values.barIslandOpacity ?? 0.92    // how solid that dark island is
+    readonly property bool barIslandCards: Settings.values.barIslandCards ?? true    // what grows out of the dark island (notifications, launcher, calendar, player...) stays dark
+    readonly property real barIslandCardOpacity: Settings.values.barIslandCardOpacity ?? 0.88    // how solid those cards are
+    readonly property bool barCenterIsland: Settings.values.barCenterIsland ?? true    // one bar: the middle island keeps its own glass
+    readonly property bool barGroups: Settings.values.barGroups ?? false    // one bar: a soft pill behind the side groups (off: they sit on the bar)
+    readonly property real barGroupTint: Settings.values.barGroupTint ?? 0.07    // how light that pill is
+    // Where the islands (or groups) really are, and where the bar ends: what
+    // grows out of an island starts here, what opens under the bar goes
+    // below barBottom. With "islands" these are marginEdge, marginEnds and
+    // marginEdge + islandHeight, as always.
+    readonly property int islandTop: barStyle === "float" ? marginEdge + barPad : barJoined ? barPad : marginEdge
+    readonly property int islandSide: barStyle === "float" ? marginEnds + barPad : marginEnds
+    readonly property int barBottom: islandTop + islandHeight + (barJoined ? barPad : 0)
+
     // ---- Corners ------------------------------------------------------------------
     // One scale for the whole shell. Something inside a rounded box, `gap` px
     // from its edge, gets the box's radius minus that gap (inner()), so both
@@ -60,7 +94,7 @@ Singleton {
     }
 
     // ---- Things inside the islands ----------------------------------------------
-    readonly property int itemHeight: Settings.values.itemHeight ?? 28    // hover circles, workspace pill area
+    readonly property int itemHeight: Math.min(Settings.values.itemHeight ?? 28, islandHeight - 2)    // hover circles, workspace pill area
     readonly property real hoverTint: Settings.values.hoverTint ?? 0.08    // how much a button lights up on hover
     readonly property real pressTint: Settings.values.pressTint ?? 0.14
     readonly property real pressScale: Settings.values.pressScale ?? 0.9    // click squish
@@ -121,6 +155,7 @@ Singleton {
     readonly property int workspacesShown: Settings.values.workspacesShown ?? 5    // at least this many workspace slots
     readonly property int workspaceSlot: Settings.values.workspaceSlot ?? 24    // size of one workspace slot
     readonly property bool workspaceIcons: Settings.values.workspaceIcons ?? true    // app icons in taken workspace slots (instead of the number)
+    readonly property string workspaceStyle: Settings.values.workspaceStyle ?? "slots"    // "slots" (numbers or app icons) | "dots" (a dot each, the current one a long accent pill)
     readonly property int workspaceIconsMax: Settings.values.workspaceIconsMax ?? 3    // icons per slot, then "+n"
     readonly property int titleMaxWidth: Settings.values.titleMaxWidth ?? 300    // window title, before "..."
     readonly property int mediaMaxWidth: Settings.values.mediaMaxWidth ?? 200    // song title, before "..."
@@ -317,6 +352,15 @@ Singleton {
     readonly property bool launcherWeb: Settings.values.launcherWeb ?? true
     readonly property string webSearchUrl: Settings.values.webSearchUrl ?? "https://www.google.com/search?q=%s"    // %s = what you typed
     readonly property string fileSearchRoot: Settings.values.fileSearchRoot ?? "~"
+    // Launcher: translate. "tr " and some text: one row with the translation
+    // (services/Translator.qml: Google Translate, over HTTPS), asked only
+    // after a pause in typing; Enter copies it. "tr ja: hello" picks the
+    // language, otherwise translatePair decides the way.
+    readonly property bool launcherTranslate: Settings.values.launcherTranslate ?? true
+    // Launcher: app grid (▦ in the launcher, `mine launcher grid`). Every app
+    // as a big tile with group chips on top (Launchpad); typing searches.
+    readonly property bool launcherGridInTablet: Settings.values.launcherGridInTablet ?? true    // in tablet mode the launcher opens as the grid
+    readonly property int launcherGridIconSize: Settings.values.launcherGridIconSize ?? 60    // its icons (a fifth bigger in tablet mode)
 
     // ---- Control center ----------------------------------------------------------------
     // ⚙ (or a click on Wi-Fi, Bluetooth, volume, battery): the right island
@@ -332,7 +376,7 @@ Singleton {
     // ---- Control center tiles, hotspot, song (control/ControlTiles.qml) ----------------
     // The tiles shown, in order: ids from control/ControlTiles.qml. Edit in
     // the control center (Edit under the tiles) or Settings → Control center.
-    readonly property var controlTiles: Settings.values.controlTiles ?? ["wifi", "bluetooth", "silent", "awake", "nightlight", "darkmode", "screenshot", "record", "power", "rotate", "phone", "tailscale"]
+    readonly property var controlTiles: Settings.values.controlTiles ?? ["wifi", "bluetooth", "silent", "awake", "nightlight", "darkmode", "screenshot", "record", "power", "rotate", "phone", "tailscale", "updates", "aiusage", "system"]
     // The hotspot's network name; "" = NetworkManager's own (Hotspot-<this computer's name>).
     // Its password is NetworkManager's (made once, kept in its profile), never here.
     readonly property string hotspotName: Settings.values.hotspotName ?? ""
@@ -365,6 +409,10 @@ Singleton {
     readonly property int dockMarginEdge: Settings.values.dockMarginEdge ?? 6    // gap between the screen bottom and the dock
     readonly property int dockRadius: Settings.values.dockRadius ?? 20
     readonly property real dockOpacity: Settings.values.dockOpacity ?? 0.45    // glass tint
+    // Near-black like the bar's middle island (Style.barIslandDark), its
+    // label, previews and menu too (dark while Style.barIslandCards); by
+    // default whenever the bar has that island.
+    readonly property bool dockDark: Settings.values.dockDark ?? (barJoined && barCenterIsland && barIslandDark)
     readonly property bool dockReserve: Settings.values.dockReserve ?? true    // windows stay above the dock (only with "always")
     // "always": always there. "autohide": slides away; touch the bottom edge
     // under it to bring it back. "smart": there while the workspace has no
@@ -382,6 +430,13 @@ Singleton {
     // Pinned until you pin/unpin from the dock's right-click menu (then
     // ~/.local/state/mine-shell/dock.json wins).
     readonly property var dockPinned: Settings.values.dockPinned ?? ["foot", "zen", "brave-browser-nightly", "org.gnome.Nautilus", "discord", "com.spotify.Client"]
+    // Dock badges (services/Badges.qml): a red count of the app's unread
+    // messages on its icon. "both": what the app itself says (its
+    // LauncherEntry D-Bus signal) or else its unread notifications; "apps"
+    // or "notifications": only that one.
+    readonly property bool dockBadges: Settings.values.dockBadges ?? true
+    readonly property string dockBadgeSource: Settings.values.dockBadgeSource ?? "both"
+    readonly property bool dockBadgeProgress: Settings.values.dockBadgeProgress ?? true    // a thin bar under the icon while the app says it's busy (a download)
 
     // ---- Power menu ------------------------------------------------------------------
     // ⏻ in the right island (or Super+X): five big buttons in the middle of
@@ -720,6 +775,61 @@ Singleton {
     readonly property bool drivesWatch: Settings.values.drivesWatch ?? true    // watch for them at all (udisksctl monitor)
     readonly property bool drivesNotify: Settings.values.drivesNotify ?? true    // "USB drive plugged in"
     readonly property int drivesPopupWidth: Settings.values.drivesPopupWidth ?? 330
+
+    // ---- Screen time, breaks, AI usage (services/ScreenTime.qml, Breaks.qml, AiUsage.qml) -----
+    // Screen time: the focused app's time while you're really there (screen
+    // on, not locked or asleep, some input in the last screenTimeIdle s; a
+    // fullscreen window or a playing video goes on counting). "Screen time"
+    // in Bar items and in the control center's tiles; kept 30 days.
+    readonly property bool screenTime: Settings.values.screenTime ?? true
+    readonly property int screenTimeIdle: Settings.values.screenTimeIdle ?? 300    // s without input until it stops counting
+    readonly property int screenTimeDays: Settings.values.screenTimeDays ?? 30    // days kept
+    readonly property int screenTimePopupWidth: Settings.values.screenTimePopupWidth ?? 340
+    // Break reminders: a notification after breakAfter min on the screen
+    // without a real break (away breakResetAfter min or more): Snooze, or
+    // Take a break (a breakLength min countdown on the screen). Quiet while
+    // fullscreen, sharing or recording the screen, or Silent.
+    readonly property bool breakReminders: Settings.values.breakReminders ?? true
+    readonly property int breakAfter: Settings.values.breakAfter ?? 50    // min
+    readonly property int breakResetAfter: Settings.values.breakResetAfter ?? 5    // min away that count as a break
+    readonly property int breakSnooze: Settings.values.breakSnooze ?? 10    // min
+    readonly property int breakLength: Settings.values.breakLength ?? 5    // min, the countdown
+    readonly property real breakDim: Settings.values.breakDim ?? 0.55    // darkens the screen behind the countdown
+    readonly property bool breakEyes: Settings.values.breakEyes ?? false    // 20-20-20: look away now and then
+    readonly property int breakEyesEvery: Settings.values.breakEyesEvery ?? 20    // min
+    // AI usage ("AI usage" in Bar items): Claude's and Codex's limits, read
+    // with their apps' own sign-in (never refreshed or written).
+    readonly property int aiUsagePoll: Settings.values.aiUsagePoll ?? 5    // min between checks while shown
+    readonly property bool aiUsageNotify: Settings.values.aiUsageNotify ?? true    // once per window at each threshold
+    readonly property int aiUsageWarnAt: Settings.values.aiUsageWarnAt ?? 80    // % (when the answer doesn't say)
+    readonly property int aiUsageCriticalAt: Settings.values.aiUsageCriticalAt ?? 95    // %
+    readonly property color aiUsageWarnColor: Settings.values.aiUsageWarnColor ?? "#ff9f0a"    // the rings past warnAt (critical: the error color)
+    readonly property int aiUsagePopupWidth: Settings.values.aiUsagePopupWidth ?? 340
+
+    // ---- Timer, stopwatch, alarms (services/Timers.qml) --------------------------------
+    // The control center's Timer, Stopwatch and Alarm tiles (and their page).
+    // A timer that ends or an alarm rings until Stop, then stops by itself.
+    readonly property int timersSnoozeMinutes: Settings.values.timersSnoozeMinutes ?? 9
+    readonly property int timersRingSeconds: Settings.values.timersRingSeconds ?? 60    // the sound stops by itself after this (the notification stays)
+    readonly property bool timersRingInSilent: Settings.values.timersRingInSilent ?? true    // rings (and pops up) in Silent too
+    readonly property real timersVolume: Settings.values.timersVolume ?? 0.8    // the alarm sound (0-1), of the system volume
+
+    // ---- Drawing on the screen (services/Ink.qml, ink/) ---------------------------------
+    // The pen, the mouse and (inkTouch) a finger draw over everything; a small
+    // toolbar to drag around. mango doesn't blur behind it, so its glass is
+    // thicker (inkToolbarOpacity).
+    readonly property bool inkTouch: Settings.values.inkTouch ?? false    // a finger draws too (a palm resting on the screen would as well)
+    readonly property real inkFadeSeconds: Settings.values.inkFadeSeconds ?? 0    // strokes fade away after this long (0 = they stay)
+    readonly property real inkToolbarOpacity: Settings.values.inkToolbarOpacity ?? 0.9
+
+    // ---- Notes and to-dos (services/Notes.qml, notes/) ---------------------------------
+    // The notes panel (the Notes tile, a click on the desktop's notes card)
+    // sits at the right, under the bar; the card goes on the desktop with
+    // "notes" in desktopWidgets.
+    readonly property int notesWidth: Settings.values.notesWidth ?? 420
+    readonly property int notesHeight: Settings.values.notesHeight ?? 600    // at most (less above the on-screen keyboard)
+    readonly property real notesOpacity: Settings.values.notesOpacity ?? 0.86    // the panel's glass
+    readonly property bool notesCollapseDone: Settings.values.notesCollapseDone ?? true    // a checklist's ticked items folded under "N done"
 
     // A color with a new alpha (0-1).
     function alpha(c: color, a: real): color {
