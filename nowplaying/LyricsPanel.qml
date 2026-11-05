@@ -34,7 +34,7 @@ Item {
 
     // What it shows: synced | plain | loading | none | instrumental | offline | browser
     readonly property string mode: {
-        if (Lyrics.skipped)
+        if (Lyrics.fromBrowser)
             return "browser";
         if (!Lyrics.current || Lyrics.status === "idle" || Lyrics.status === "loading")
             return "loading";
@@ -185,7 +185,7 @@ Item {
         hint: root.mode === "instrumental" ? "No words to sing along to"
             : root.mode === "offline" ? "It tries again in a little while"
             : root.mode === "none" ? "lrclib.net doesn't have them"
-            : root.mode === "browser" ? "Settings → Lyrics → From browsers"
+            : root.mode === "browser" ? "Page titles stay on this computer"
             : " "       // keeps the line, so nothing shifts when the answer comes
     }
 
