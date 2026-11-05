@@ -15,9 +15,9 @@ wallpaper, and every piece of the desktop in one shell.
 Every clip below is the real shell, recorded in a headless session with made-up data
 (notifications, music, lyrics, calendar, clipboard, updates, devices, notes, screen time, AI usage
 and the list of apps). That session had no network or Bluetooth, so those show as off. The clips
-show the default look (three islands), with a few items added to the bar and the desktop clock in a
-corner; the **One bar** clip shows the other bar styles. The whole walkthrough as one video, older
-than the clips (2 min, 1920×1200 MP4, 37 MB):
+show the default look (three islands), with a few items added to the bar, the desktop clock in a
+corner and, in the newest clips, a notes card; the **One bar** clip shows the other bar styles. The
+whole walkthrough as one video, older than the clips (2 min, 1920×1200 MP4, 37 MB):
 [walkthrough.mp4](https://github.com/letrquan/ume/releases/download/walkthrough/walkthrough.mp4).
 
 <table>
