@@ -68,11 +68,10 @@ Singleton {
             Notifs.putAwayPopups();     // the popup owns the middle island now
         }
         unmap.stop();
-        if (!mapped)
-            screen = Monitors.panelScreen(want);
         // open first: the window is created the moment `mapped` turns on,
         // and must see the panel open already.
         open = true;
+        screen = Monitors.panelScreen(want, mapped ? screen : "");
         mapped = true;
     }
 

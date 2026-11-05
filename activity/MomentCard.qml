@@ -122,7 +122,7 @@ Item {
         }
         TapHandler {
             acceptedButtons: Qt.LeftButton
-            onTapped: Activities.activate(root.shown)
+            onTapped: Activities.activate(root.shown, Monitors.screenOf(root))
         }
         TapHandler {
             acceptedButtons: Qt.RightButton

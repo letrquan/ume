@@ -74,7 +74,10 @@ Scope {
         }
 
         // mango restarted or mmsg died: try again in a moment.
-        onExited: restart.start()
+        onExited: {
+            root.focused = false;
+            restart.start();
+        }
     }
 
     Timer {

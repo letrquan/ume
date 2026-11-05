@@ -47,11 +47,10 @@ Singleton {
         if (Wallpaper.pickerOpen)
             Wallpaper.setPicker(false);
         unmap.stop();
-        if (!mapped)
-            screen = Monitors.panelScreen(want);
         // open first: the window is created the moment `mapped` turns on,
         // and must see the card open already.
         open = true;
+        screen = Monitors.panelScreen(want, mapped ? screen : "");
         mapped = true;
     }
 

@@ -166,18 +166,18 @@ Singleton {
     onEnabledChanged: if (!enabled) { queue = []; done(); }
 
     // Click on the card.
-    function activate(m) {
+    function activate(m, screenName) {
         if (!m)
             return;
         switch (m.kind) {
         case "charging":
-            ControlState.toggle("main");
+            ControlState.toggle("main", screenName);
             break;
         case "bluetooth":
-            ControlState.toggle("bluetooth");
+            ControlState.toggle("bluetooth", screenName);
             break;
         case "wifi":
-            ControlState.toggle("wifi");
+            ControlState.toggle("wifi", screenName);
             break;
         case "screenshot":
             if (m.file && !Screenshot.dryRun)
@@ -187,7 +187,7 @@ Singleton {
             break;
         case "copy":
             if (!m.ocr)
-                ClipboardState.toggle();
+                ClipboardState.toggle(screenName);
             break;
         }
         done();

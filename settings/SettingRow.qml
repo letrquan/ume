@@ -267,7 +267,7 @@ Item {
                     Clickable {
                         implicitHeight: 30
                         padding: 12
-                        onClicked: Wallpaper.setPicker(true)
+                        onClicked: Wallpaper.setPicker(true, Monitors.screenOf(row))
                         StyledText { anchors.verticalCenter: parent.verticalCenter; text: "Choose…"; role: "label" }
                     }
                     Clickable {

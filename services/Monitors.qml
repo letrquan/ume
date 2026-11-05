@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import qs.common
 
 // The bar's MangoMonitor of each screen (bar/BarContent.qml puts it here),
 // so the dock reads the same one instead of running a second
@@ -29,14 +30,18 @@ Singleton {
     }
 
     // The screen a panel opens on: `want` (a bar item's own screen, see
-    // screenOf), else the one with mango's focus, else the first one. Only
-    // "" with no screens at all.
-    function panelScreen(want) {
+    // screenOf), else `stay` (the one it's still shrinking back on), else the
+    // one with mango's focus, else the first one. Each only if it's still
+    // there; only "" with no screens at all. A new answer for a panel still
+    // on another screen moves its window, so it has to be open by then.
+    function panelScreen(want, stay) {
         const all = Quickshell.screens;
         if (all.length === 1)
             return all[0].name;
-        if (want && all.some(s => s.name === want))
-            return want;
+        for (const name of [want, stay]) {
+            if (name && all.some(s => s.name === name))
+                return name;
+        }
         return (all.find(s => root.byScreen[s.name]?.focused) ?? all[0])?.name ?? "";
     }
 
@@ -62,9 +67,11 @@ Singleton {
     }
 
     // While a panel is open, the screens it isn't on: a click on one closes it
-    // (shell.qml), as a click outside it does on its own screen. Those windows
-    // come a moment after the panel: made together, they cost its opening
-    // animation a frame or two.
+    // (shell.qml), as a click outside it does on its own screen. Their windows
+    // only take clicks while their screen is on this list. They come a moment
+    // after the panel (made together, they cost its opening animation a frame
+    // or two) and go once it has closed (letting go of a window stalls the
+    // shell for a moment); a screen that's gone takes its window along at once.
     readonly property var panelFreeScreens: {
         const all = Quickshell.screens;
         if (all.length < 2)
@@ -77,16 +84,12 @@ Singleton {
     }
     property var clickAwayScreens: []
     onPanelFreeScreensChanged: {
-        if (panelFreeScreens.length === 0) {
-            clickAwayDelay.stop();
-            clickAwayScreens = [];
-        } else {
-            clickAwayDelay.restart();
-        }
+        clickAwayScreens = clickAwayScreens.filter(s => Quickshell.screens.includes(s));
+        clickAwayDelay.interval = panelFreeScreens.length > 0 ? 200 : Motion.morphOut + Motion.contentIn + 80;
+        clickAwayDelay.restart();
     }
     Timer {
         id: clickAwayDelay
-        interval: 200
         onTriggered: root.clickAwayScreens = root.panelFreeScreens
     }
 

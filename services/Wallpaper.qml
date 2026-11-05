@@ -124,11 +124,10 @@ Singleton {
         }
     }
 
-    function setPicker(open) {
+    function setPicker(open, want) {
         if (open) {
             pickerUnmap.stop();
-            if (!pickerMapped)
-                pickerScreen = Monitors.panelScreen();
+            pickerScreen = Monitors.panelScreen(want, pickerMapped ? pickerScreen : "");
             pickerMapped = true;
             scan();
         } else {
