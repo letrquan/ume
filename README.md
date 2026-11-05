@@ -13,9 +13,11 @@ wallpaper, and every piece of the desktop in one shell.
 ## Tour
 
 Every clip below is the real shell, recorded in a headless session with made-up data
-(notifications, music, lyrics, calendar, clipboard, updates, devices). That session had no network
-or Bluetooth, so those show as off. The clips show the default look (three islands); the one-bar
-styles and the newest parts below have no clips yet. The whole walkthrough as one video (2 min, 1920×1200 MP4, 37 MB):
+(notifications, music, lyrics, calendar, clipboard, updates, devices, notes, screen time, AI usage
+and the list of apps). That session had no network or Bluetooth, so those show as off. The clips
+show the default look (three islands), with a few items added to the bar and the desktop clock in a
+corner; the **One bar** clip shows the other bar styles. The whole walkthrough as one video, older
+than the clips (2 min, 1920×1200 MP4, 37 MB):
 [walkthrough.mp4](https://github.com/letrquan/ume/releases/download/walkthrough/walkthrough.mp4).
 
 <table>
@@ -62,6 +64,22 @@ styles and the newest parts below have no clips yet. The whole walkthrough as on
 <tr>
 <td><img src="docs/translate.webp" alt="Translate a region"><br><b>Translate</b> (Super+Shift+D): pick text on the screen; it's read (tesseract) and translated, English ⇄ Vietnamese by default.</td>
 <td><img src="docs/qr.webp" alt="QR scan"><br><b>QR scan</b> (Super+Shift+Q): pick a code on the screen; a link can be opened or copied from the notification.</td>
+</tr>
+<tr>
+<td><img src="docs/bar-styles.webp" alt="One-bar styles and the dark dock"><br><b>One bar</b> (Settings → Bar → Style): float, hug and plain. The clock and music sit in a near-black dynamic island, and the dock turns dark with it. In this clip the workspaces are dots and one status button holds Wi-Fi, volume and battery, both also picked in Settings.</td>
+<td><img src="docs/app-grid.webp" alt="App grid"><br><b>App grid</b> (Super+Shift+A, 3 fingers up): every app A to Z, with chips for each group. Typing turns it back into the launcher.</td>
+</tr>
+<tr>
+<td><img src="docs/timers.webp" alt="Timers"><br><b>Timers</b> (Super+Alt+T): timer, stopwatch and alarms, with a bar item while one runs.</td>
+<td><img src="docs/notes.webp" alt="Notes and to-dos"><br><b>Notes and to-dos</b> (Super+Shift+N): text, checklists and drawings, with one of them as a card on the desktop.</td>
+</tr>
+<tr>
+<td><img src="docs/ink.webp" alt="Ink on the screen"><br><b>Ink</b> (Super+P): pen, highlighter and laser pointer over anything on the screen. Esc ends it, and the ink goes with it.</td>
+<td><img src="docs/screen-time.webp" alt="Screen time and break reminders"><br><b>Screen time</b> (Super+Alt+S): per app and the last 7 days. A <b>break reminder</b> comes as a notification; taking the break counts down on the screen.</td>
+</tr>
+<tr>
+<td><img src="docs/ai-usage.webp" alt="Claude and Codex usage"><br><b>Claude and Codex usage</b> (Super+Alt+U): the limits as rings on the bar; the popup has each limit and when it resets.</td>
+<td></td>
 </tr>
 </table>
 
