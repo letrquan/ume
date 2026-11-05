@@ -19,10 +19,10 @@ import "lyrics.js" as Lyr
 // again after a week). Offline it stays quiet and tries again when the
 // song is wanted again 2 minutes later, never in a loop.
 //
-// Never for a browser: what it publishes as the song is the page's title,
-// and a chat tab's can hold people's names. Nothing here reads a browser's
-// "song" (songPlayer below), so it isn't looked up, sought in the saved
-// answers or logged.
+// Never for a player it recognizes as a browser (lyrics.js isBrowser): what
+// a browser publishes as the song is the page's title, and a chat tab's can
+// hold people's names. Nothing here reads such a "song" (songPlayer below),
+// so it isn't looked up, sought in the saved answers or logged.
 //
 // Timing: Quickshell works out the player's position from the last one it
 // was told (on seeks, play/pause and new songs). One timer waits for the
@@ -52,17 +52,10 @@ Singleton {
     readonly property var player: Players.active
     readonly property bool playing: player?.isPlaying ?? false
 
-    // A browser, by any of its three names. All of the Chromium family (and
-    // apps built on it) use org.mpris.MediaPlayer2.chromium.instanceN. A letter
-    // next to a name makes it another word: gmusicbrowser is a music player.
-    function isBrowser(p) {
-        return /(?:^|[^a-z])(?:browser|brave|firefox[a-z]*|chromium|chrome|msedge|edge|vivaldi|opera|librewolf|zen|epiphany|falkon|qutebrowser|torbrowser|floorp|waterfox|thorium|iridium|konqueror|midori|icecat|seamonkey|palemoon|basilisk|ladybird|nyxt)(?:[^a-z]|$)/i
-            .test([p?.dbusName ?? "", p?.identity ?? "", p?.desktopEntry ?? ""].join(" "));
-    }
-    readonly property bool fromBrowser: isBrowser(player)
-    // The only way to the song. It asks isBrowser itself, so a new player's
-    // title can't get through while fromBrowser catches up.
-    readonly property var songPlayer: isBrowser(player) ? null : player
+    // The only way to the song: nothing for a browser. All of the Chromium
+    // family (and apps built on it) use org.mpris.MediaPlayer2.chromium.instanceN.
+    readonly property var songPlayer: Lyr.isBrowser(player?.dbusName, player?.identity, player?.desktopEntry) ? null : player
+    readonly property bool fromBrowser: !!player && !songPlayer
 
     readonly property string title: songPlayer?.trackTitle ?? ""
     readonly property string artist: songPlayer?.trackArtist ?? ""
@@ -135,6 +128,7 @@ Singleton {
             lines = [];
             plain = [];
             source = "";
+            skipCache = false;
         }
         // A player can change title and artist in steps, and say what it is
         // just after its song: wait for it to settle.
@@ -159,7 +153,8 @@ Singleton {
         lines = [];
         plain = [];
         skipCache = true;
-        load();
+        // The same wait as a new song: the player may still be saying what it is.
+        settle.restart();
     }
     property bool skipCache: false
 
@@ -193,11 +188,12 @@ Singleton {
             skipCache = false;
             fixtureWait.key = key;
             fixtureWait.forKey = forKey;
+            fixtureWait.title = title;
             fixtureWait.restart();
             return;
         }
         if (!skipCache && memo[key]) {
-            apply(forKey, memo[key], "cache");
+            apply(forKey, memo[key], "cache", title);
             return;
         }
         reader.forKey = forKey;
@@ -233,7 +229,7 @@ Singleton {
                 return;
             }
             root.remember(key, entry);
-            root.apply(forKey, entry, "cache");
+            root.apply(forKey, entry, "cache", want.title);
         }
         onLoadFailed: root.ask(forKey, key, want)
     }
@@ -243,10 +239,12 @@ Singleton {
         id: fixtureWait
         property string key: ""
         property string forKey: ""
+        property string title: ""
         interval: Math.max(1, root.fixtureDelay)
         onTriggered: {
             fixture.forKey = forKey;
-            const path = root.fixtureDir + "/" + Lyr.fixtureName(root.title) + ".lrc";
+            fixture.title = title;
+            const path = root.fixtureDir + "/" + Lyr.fixtureName(title) + ".lrc";
             if (fixture.path === path)
                 fixture.reload();
             else
@@ -256,14 +254,15 @@ Singleton {
     FileView {
         id: fixture
         property string forKey: ""
+        property string title: ""
         printErrors: false
         onLoaded: {
             const t = text();
             root.apply(forKey, t.trim() === "#instrumental"
                 ? { v: 1, found: true, instrumental: true, synced: null, plain: null }
-                : { v: 1, found: true, instrumental: false, synced: t, plain: null }, "fixture");
+                : { v: 1, found: true, instrumental: false, synced: t, plain: null }, "fixture", title);
         }
-        onLoadFailed: root.apply(forKey, { v: 1, found: false }, "fixture")
+        onLoadFailed: root.apply(forKey, { v: 1, found: false }, "fixture", title)
     }
 
     // ---- lrclib ---------------------------------------------------------------------------
@@ -361,7 +360,7 @@ Singleton {
         } else {
             remember(f.key, entry);
             save(f.key, entry);
-            apply(f.forKey, entry, "network");
+            apply(f.forKey, entry, "network", f.want.title);
         }
         if (f.queued) {
             f.queued = false;
@@ -407,7 +406,8 @@ Singleton {
         printErrors: false
     }
 
-    function apply(key, entry, from) {
+    // song: the title of the song the answer is for, not what plays by now.
+    function apply(key, entry, from, song) {
         if (key !== forKey)
             return;   // an older song's answer (saved, not shown)
         const parsed = Lyr.parse(entry.synced ?? "");
@@ -419,8 +419,7 @@ Singleton {
             : lines.length > 0 ? "synced"
             : plain.length > 0 ? "plain"
             : "none";
-        // The song the answer is for (key: its trackId), not what plays by now.
-        console.log("lyrics:", status, "for", JSON.stringify(key.split("\n")[1]), "(" + (lines.length || plain.length) + " lines, " + from + ")");
+        console.log("lyrics:", status, "for", JSON.stringify(song), "(" + (lines.length || plain.length) + " lines, " + from + ")");
         sync();
     }
 

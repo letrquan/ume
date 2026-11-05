@@ -172,6 +172,29 @@ function cacheKey(artist, title, album, duration) {
     return (slug || "song") + "-" + h.toString(16).padStart(8, "0");
 }
 
+// Is this player a browser, by its D-Bus name, identity or desktop entry?
+// What a browser plays is named after the page, whatever the page is.
+//   Names only a browser has count anywhere in a name.
+//   "browser" counts as a word of its own: tor-browser and Tor Browser are
+//   browsers, gmusicbrowser is a music player.
+//   Words anything could have (edge, opera, zen…) count only as the whole
+//   name: Thorium is a browser, Thorium Reader isn't.
+// KDE Connect's relay is "<player> - <device>": only the player counts, so
+// "Spotify - motorola edge 40" isn't Edge, and "Chrome - motorola edge 40" is
+// Chrome.
+const browserAnywhere = /chromium|chrome(?!cast)|firefox|brave|vivaldi|librewolf|waterfox|floorp|falkon|epiphany|qutebrowser|torbrowser|mullvad|msedge|microsoft[-._ ]?edge|konqueror|pale ?moon|icecat|seamonkey|nyxt/i;
+const browserWord = /(?:^|[^a-z])browser(?:[^a-z]|$)/i;
+const browserWhole = /^(?:edge|opera(?:[- ](?:gx|beta|developer|next|mini|touch|air))?|com\.opera\.opera|zen(?:-(?:alpha|twilight))?|thorium|iridium|midori|basilisk|ladybird)$/i;
+
+function browserName(name) {
+    const n = String(name ?? "").replace(/^org\.mpris\.MediaPlayer2\./, "").replace(/\.instance[^.]*$/, "").split(" - ")[0].trim();
+    return browserAnywhere.test(n) || browserWord.test(n) || browserWhole.test(n);
+}
+
+function isBrowser(busName, identity, desktopEntry) {
+    return browserName(busName) || browserName(identity) || browserName(desktopEntry);
+}
+
 // The fixture file name for a song (tests: MINE_LYRICS_FIXTURE).
 function fixtureName(title) {
     return loose(cleanTitle(title)).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "song";
