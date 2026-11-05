@@ -206,6 +206,7 @@ cleanup_children() {
     pkill "${only[@]}" -f "wl-paste --type (text|image) --watch (cliphist store|sh .*/scripts/clip-store\.sh)" 2>/dev/null || true
     pkill "${only[@]}" -f "wl-clip-persist --clipboard regular" 2>/dev/null || true
     pkill "${only[@]}" -f "udevadm monitor --udev --subsystem-match=backlight" 2>/dev/null || true
+    pkill "${only[@]}" -f "^(/usr/bin/)?udisksctl monitor$" 2>/dev/null || true
     pkill "${only[@]}" -f "^(/usr/bin/)?monitor-sensor --(accel|light)$" 2>/dev/null || true
     pkill "${only[@]}" -f "^(/usr/bin/)?busctl --user monitor --json=short --match=type='signal',interface='com\.canonical\.Unity\.LauncherEntry'" 2>/dev/null || true
     # A timer or alarm still ringing (common/sounds.js loopCommand; TERM also
