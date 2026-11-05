@@ -21,11 +21,12 @@
 #   same socket name), looks every 5 s, and ends once that process is gone,
 #   with everything it started: the idle loop and hypridle (never started again
 #   without that compositor), the inhibitor and its `sleep`, the gdbus. Not a
-#   lock it started: that stays up. It looks at the process itself, so `ss`
-#   failing later on means nothing.
-# - No such process found (no `ss`, too early at login): unlike the shell's
-#   keeper it guards anyway and says so in its log, and looks again each time
-#   until it finds it. One left over after a logout is better than none at all.
+#   lock it started: that stays up. It looks at the process itself, so the
+#   lookup failing later on means nothing.
+# - No such process found (the socket doesn't answer yet at login, no python):
+#   unlike the shell's keeper it guards anyway and says so in its log, and looks
+#   again each time until it finds it. One left over after a logout is better
+#   than none at all.
 # - One at a time, for this user, as qs-lock and its marker are: two guards
 #   locking at once could each take the other's lock for its own. The next one
 #   compares its compositor with the one the guard holding the lock is for
@@ -96,8 +97,12 @@ esac
 # the name, which can hold anything; the start time tells it from a later
 # process with the same pid). Fails if it can't be read.
 read_stat() {
-    local line
-    { IFS= read -r line <"/proc/$1/stat"; } 2>/dev/null || return 1
+    local line=""
+    # All of it (read says it failed, finding no NUL): a name can hold newlines.
+    { IFS= read -r -d '' line <"/proc/$1/stat"; } 2>/dev/null
+    if [ -z "$line" ]; then
+        return 1
+    fi
     # shellcheck disable=SC2086
     set -- ${line##*) }
     state=${1:-}
@@ -120,17 +125,26 @@ compositor_began=""
 compositor_alive() {
     [ -z "$compositor" ] || is_up "$compositor" "$compositor_began"
 }
-# find_compositor: what's listening on the Wayland socket (nothing on a file left
-# behind by a compositor that crashed). The first started of what ss lists: a
-# child it forks holds the socket as well, until that runs what it was forked for.
+# find_compositor: what's listening on the Wayland socket, from the socket itself
+# (nothing on a file left behind by a compositor that crashed). Not from `ss` like
+# the shell's keeper: that lists a child the compositor has just forked, which
+# holds the socket for a moment, and a sandboxed process with a socket of the same
+# path in its own mount namespace, which could then end this guard by exiting.
 find_compositor() {
     local p
-    for p in $(timeout 2 ss -xlpn src "$sock" 2>/dev/null | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -nu); do
-        if read_stat "$p" && { [ -z "$compositor" ] || [ "${began:-0}" -lt "${compositor_began:-0}" ]; }; then
-            compositor=$p
-            compositor_began=$began
-        fi
-    done
+    p=$(timeout 2 python3 -I -c '
+import socket, struct, sys
+s = socket.socket(socket.AF_UNIX)
+s.connect(sys.argv[1])
+print(struct.unpack("3i", s.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12))[0])
+' "$sock" 2>/dev/null)
+    case $p in
+    "" | 0 | *[!0-9]*) return ;;
+    esac
+    if read_stat "$p" && [ -n "$began" ]; then
+        compositor=$p
+        compositor_began=$began
+    fi
 }
 find_compositor
 
@@ -156,7 +170,7 @@ note_holder() {
     printf '%s %s %s\n' "${compositor:--}" "${compositor_began:--}" "${XDG_SESSION_ID:--}" >"$dir/holder.new" &&
         mv -f "$dir/holder.new" "$dir/holder"
 }
-# judge_holder: sets $holder, about the guard holding the lock: same (it's for
+# judge_holder: sets $verdict, about the guard holding the lock: same (it's for
 # this compositor, or this login), other (for another compositor that's still
 # there), over (its compositor has gone), unknown (can't tell).
 judge_holder() {
@@ -169,29 +183,29 @@ judge_holder() {
     "" | *[!0-9]*) b="" ;;
     esac
     if [ -n "$c" ] && ! is_up "$c" "$b"; then
-        holder=over
+        verdict=over
     elif [ -n "${XDG_SESSION_ID:-}" ] && [ "$login" = "$XDG_SESSION_ID" ] && { [ -z "$c" ] || [ -z "$compositor" ]; }; then
-        holder=same
+        verdict=same
     elif [ -z "$c" ]; then
-        holder=unknown
+        verdict=unknown
     elif [ -z "$compositor" ]; then
-        holder=other
+        verdict=other
     elif [ "$c" = "$compositor" ] && [ "$b" = "$compositor_began" ]; then
-        holder=same
+        verdict=same
     else
-        holder=other
+        verdict=other
     fi
 }
 if ! take_lock -n; then
     judge_holder
-    if [ "$holder" = same ] && ! take_lock -w 2; then
+    if [ "$verdict" = same ] && ! take_lock -w 2; then
         log "another guard runs for this compositor: leaving it to that one"
         exit 0
     fi
-    if [ "$holder" = other ]; then
+    if [ "$verdict" = other ]; then
         log "another login's guard holds the lock: this one waits (compositor: ${compositor:-not found})"
     fi
-    while [ "$holder" = other ] && ! take_lock -w "$every"; do
+    while [ "$verdict" = other ] && ! take_lock -w "$every"; do
         if ! compositor_alive; then
             log "the compositor (pid $compositor) is gone (logout?), and this one never started: ending"
             exit 0
@@ -200,7 +214,7 @@ if ! take_lock -n; then
             find_compositor
         fi
         judge_holder
-        if [ "$holder" = same ]; then
+        if [ "$verdict" = same ]; then
             log "another guard runs for this compositor: leaving it to that one"
             exit 0
         fi
@@ -303,7 +317,7 @@ look() {
     fi
     if [ -z "$locked" ] && ! take_lock -n; then
         judge_holder
-        if [ "$holder" = same ]; then
+        if [ "$verdict" = same ]; then
             log "another guard runs for this compositor: leaving it to that one"
             stop
         fi
