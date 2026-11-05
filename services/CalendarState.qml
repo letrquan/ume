@@ -27,11 +27,10 @@ Singleton {
         ClipboardState.close();
         NowPlayingState.close();
         unmap.stop();
-        if (!mapped)
-            screen = Monitors.panelScreen(want);
         // open first: the window is created the moment `mapped` turns on,
         // and must see the panel open already.
         open = true;
+        screen = Monitors.panelScreen(want, mapped ? screen : "");
         mapped = true;
     }
 

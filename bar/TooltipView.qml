@@ -38,7 +38,7 @@ Item {
     // Something else is where the tip would be, or grows out of the bar:
     // a panel, the volume OSD, a popup. The tip waits rolled up (and comes
     // back if the mouse is still there when it's gone).
-    readonly property bool covered: IslandState.takenOver || IslandState.controlCovering
+    readonly property bool covered: IslandState.takenOverOn(Tooltips.screenName) || IslandState.controlCovering
         || IslandState.sysmonCovering || OsdState.mapped || VolumeState.open || UpdatesState.open || Notifs.centerOpen
         || SessionState.open || OverviewState.open || SwitcherState.open || CheatSheetState.open
 

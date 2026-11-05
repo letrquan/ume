@@ -51,7 +51,7 @@ Reveal {
 
     function updateMode() {
         // Under a card (the island is hidden): keep its size until it's back.
-        if (IslandState.takenOver)
+        if (IslandState.takenOverOn(Monitors.screenOf(root)))
             return;
         if (lyricsHere && Lyrics.synced)
             lyricMode = true;

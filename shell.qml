@@ -211,8 +211,8 @@ ShellRoot {
 
     // ---- Panels open on one screen (services/Monitors.qml) ------------------------
     // A click on another screen still closes the open panel, as a click outside
-    // it does on its own screen: see-through, no keyboard, only while one is
-    // open and only on the screens it isn't on, so with one screen there's none.
+    // it does on its own screen: see-through, no keyboard, only around the time
+    // one is open and only on the screens it isn't on, so with one screen there's none.
     // (The on-screen keyboard keeps its strip, as in the launcher's window.)
     Variants {
         model: Monitors.clickAwayScreens
@@ -233,7 +233,9 @@ ShellRoot {
             WlrLayershell.namespace: "mine-click-away"
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-            mask: Region { item: clickAwayArea }
+            mask: Monitors.panelFreeScreens.includes(modelData) ? clickAwayOn : clickAwayOff
+            Region { id: clickAwayOn; item: clickAwayArea }
+            Region { id: clickAwayOff }
 
             MouseArea {
                 id: clickAwayArea

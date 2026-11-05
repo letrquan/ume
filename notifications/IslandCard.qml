@@ -55,7 +55,7 @@ Item {
     readonly property var buttons: (e?.actions ?? []).filter(a => a.identifier !== "default" && a.text !== "")
     readonly property bool canReply: Style.notifReply && (e?.replyable ?? false)
     // The reply field is open on this card (it holds the card in place).
-    readonly property bool replyOpen: Notifs.replying !== "" && Notifs.replying === (shown?.key ?? "")
+    readonly property bool replyOpen: Notifs.replying !== "" && Notifs.replying === (shown?.key ?? "") && Notifs.replyingScreen === Monitors.screenOf(root)
     // The right-click menu is open (not together with the reply field).
     property bool menuOpen: false
     // Waiting from the same app as the one showing (it included): "3 new".

@@ -37,11 +37,10 @@ Singleton {
     function show(p, onScreen) {
         page = p || "main";
         unmap.stop();
-        if (!mapped)
-            screen = Monitors.panelScreen(onScreen);
         // open first: the window is created the moment `mapped` turns on,
         // and must see the panel open already.
         open = true;
+        screen = Monitors.panelScreen(onScreen, mapped ? screen : "");
         mapped = true;
     }
 
