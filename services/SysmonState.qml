@@ -19,6 +19,8 @@ Singleton {
     property bool open: false
     property bool mapped: false
     property string island: "right"     // left | center | right
+    // The screen it's on (Monitors.panelScreen), from opening until it's gone.
+    property string screen: ""
 
     readonly property var statKinds: ["cpu", "memory", "temperature", "netspeed", "disk"]
 
@@ -43,14 +45,14 @@ Singleton {
         return "right";
     }
 
-    function toggle(from) {
+    function toggle(from, want) {
         if (open)
             close();
         else
-            show(from);
+            show(from, want);
     }
 
-    function show(from) {
+    function show(from, want) {
         const where = from || defaultIsland();
         // Still shrinking back into another island: start over from the new one.
         if (mapped && where !== island)
@@ -66,6 +68,8 @@ Singleton {
             Notifs.putAwayPopups();     // the popup owns the middle island now
         }
         unmap.stop();
+        if (!mapped)
+            screen = Monitors.panelScreen(want);
         // open first: the window is created the moment `mapped` turns on,
         // and must see the panel open already.
         open = true;

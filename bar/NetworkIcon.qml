@@ -18,7 +18,7 @@ Clickable {
         : root.network ? root.network.name
         : "Wi-Fi: not connected"
     tipDetail: !root.wired && root.network ? Math.round(root.strength * 100) + "% signal" : ""
-    onClicked: ControlState.toggle("wifi")
+    onClicked: ControlState.toggle("wifi", Monitors.screenOf(root))
 
     Icon {
         anchors.verticalCenter: parent.verticalCenter

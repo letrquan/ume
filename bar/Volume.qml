@@ -33,7 +33,7 @@ Clickable {
 
     function route(button) {
         if (button === Qt.RightButton)
-            ControlState.toggle("audio");
+            ControlState.toggle("audio", screenName());
         else if (button === Qt.LeftButton && Style.volumePopup)
             VolumeState.toggle(screenName(), iconRect());
         else

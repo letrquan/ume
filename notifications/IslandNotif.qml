@@ -27,7 +27,7 @@ PanelWindow {
     WlrLayershell.namespace: "mine-notifications"
     WlrLayershell.layer: WlrLayer.Overlay
     // The keyboard only while typing a reply in the card.
-    WlrLayershell.keyboardFocus: Notifs.replying !== "" ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: Notifs.replying !== "" && Notifs.replyingScreen === modelData.name ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     mask: Region {
         item: island.cardItem
     }

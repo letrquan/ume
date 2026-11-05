@@ -115,7 +115,7 @@ Clickable {
         }
         return (line !== "" ? line + "\n" : "") + "Click: the System popup";
     }
-    onClicked: SysmonState.toggle(SysmonState.islandOf(kind))
+    onClicked: SysmonState.toggle(SysmonState.islandOf(kind), Monitors.screenOf(root))
 
     Icon {
         anchors.verticalCenter: parent.verticalCenter

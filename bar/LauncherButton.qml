@@ -10,7 +10,7 @@ Clickable {
     tip: "Launcher"
     tipDetail: "Apps, files, emoji, math and the web"
     tipShortcut: "mine:launcher"
-    onClicked: LauncherState.toggle()
+    onClicked: LauncherState.toggle(Monitors.screenOf(root))
 
     Shape {
         width: 18

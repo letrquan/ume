@@ -57,6 +57,8 @@ Singleton {
     // The popup whose reply field is open ("" = none): the popup window
     // takes the keyboard meanwhile, and it doesn't time out.
     property string replying: ""
+    // The screen of the copy it was opened in: only that one takes the keyboard.
+    property string replyingScreen: ""
     readonly property int unread: list.filter(e => !e.read).length
     readonly property date now: clock.date
 

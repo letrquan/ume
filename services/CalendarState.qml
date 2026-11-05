@@ -12,19 +12,23 @@ Singleton {
 
     property bool open: false
     property bool mapped: false
+    // The screen it's on (Monitors.panelScreen), from opening until it's gone.
+    property string screen: ""
 
-    function toggle() {
+    function toggle(want) {
         if (open)
             close();
         else
-            show();
+            show(want);
     }
 
-    function show() {
+    function show(want) {
         LauncherState.close();          // they share the middle island
         ClipboardState.close();
         NowPlayingState.close();
         unmap.stop();
+        if (!mapped)
+            screen = Monitors.panelScreen(want);
         // open first: the window is created the moment `mapped` turns on,
         // and must see the panel open already.
         open = true;

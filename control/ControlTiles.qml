@@ -522,7 +522,7 @@ Singleton {
                 icon: "memory"
                 label: "System"
                 detail: "CPU, memory, apps"
-                onToggled: SysmonState.show("right")
+                onToggled: SysmonState.show("right", ControlState.screen)
             }
         }
 

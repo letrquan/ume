@@ -29,7 +29,7 @@ Clickable {
     tip: dateLocale.toString(now, "dddd, d MMMM yyyy")
     tipDetail: "Week " + root.week(now)
         + (Events.soon ? "\nNext: " + Events.time(Events.soon.start) + "  " + Events.soon.title : "")
-    onClicked: CalendarState.toggle()
+    onClicked: CalendarState.toggle(Monitors.screenOf(root))
 
     // ISO week number (weeks start on Monday; week 1 has the year's first
     // Thursday).

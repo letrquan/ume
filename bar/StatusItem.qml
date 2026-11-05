@@ -65,11 +65,11 @@ Clickable {
 
     onClicked: mouse => {
         if (mouse.button === Qt.RightButton)
-            ControlState.toggle("audio");
+            ControlState.toggle("audio", Monitors.screenOf(root));
         else if (mouse.button === Qt.MiddleButton)
             ControlState.toggleMute(root.sink);
         else
-            ControlState.toggle("main");
+            ControlState.toggle("main", Monitors.screenOf(root));
     }
     // One mouse notch = volumeStep; touchpads move it smoothly.
     onWheel: wheel => {

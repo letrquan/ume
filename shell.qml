@@ -4,6 +4,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.common
 import qs.bar
 import qs.osd
@@ -181,7 +182,7 @@ ShellRoot {
             required property ShellScreen modelData
 
             LazyLoader {
-                active: LauncherState.mapped
+                active: LauncherState.mapped && LauncherState.screen === launcherScope.modelData?.name
 
                 LauncherWindow {
                     modelData: launcherScope.modelData
@@ -199,11 +200,48 @@ ShellRoot {
             required property ShellScreen modelData
 
             LazyLoader {
-                active: ControlState.mapped
+                active: ControlState.mapped && ControlState.screen === controlScope.modelData?.name
 
                 ControlWindow {
                     modelData: controlScope.modelData
                 }
+            }
+        }
+    }
+
+    // ---- Panels open on one screen (services/Monitors.qml) ------------------------
+    // A click on another screen still closes the open panel, as a click outside
+    // it does on its own screen: see-through, no keyboard, only while one is
+    // open and only on the screens it isn't on, so with one screen there's none.
+    // (The on-screen keyboard keeps its strip, as in the launcher's window.)
+    Variants {
+        model: Monitors.clickAwayScreens
+
+        PanelWindow {
+            id: clickAway
+            required property ShellScreen modelData
+
+            screen: modelData
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
+            }
+            exclusionMode: ExclusionMode.Ignore
+            color: "transparent"
+            WlrLayershell.namespace: "mine-click-away"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            mask: Region { item: clickAwayArea }
+
+            MouseArea {
+                id: clickAwayArea
+                anchors.fill: parent
+                anchors.bottomMargin: OskState.open && (Quickshell.screens.find(s => s.name.startsWith("eDP")) ?? Quickshell.screens[0]) === clickAway.modelData
+                    ? Style.oskHeight + Style.marginEdge : 0
+                acceptedButtons: Qt.AllButtons
+                onClicked: Monitors.closePanels()
             }
         }
     }
@@ -428,7 +466,7 @@ ShellRoot {
             required property ShellScreen modelData
 
             LazyLoader {
-                active: ClipboardState.mapped
+                active: ClipboardState.mapped && ClipboardState.screen === clipboardScope.modelData?.name
 
                 ClipboardWindow {
                     modelData: clipboardScope.modelData
@@ -656,7 +694,7 @@ ShellRoot {
             required property ShellScreen modelData
 
             LazyLoader {
-                active: Wallpaper.pickerMapped
+                active: Wallpaper.pickerMapped && Wallpaper.pickerScreen === pickerScope.modelData?.name
 
                 PickerWindow {
                     modelData: pickerScope.modelData
@@ -914,7 +952,7 @@ ShellRoot {
             required property ShellScreen modelData
 
             LazyLoader {
-                active: CalendarState.mapped
+                active: CalendarState.mapped && CalendarState.screen === calendarScope.modelData?.name
 
                 CalendarWindow {
                     modelData: calendarScope.modelData
@@ -944,7 +982,7 @@ ShellRoot {
             required property ShellScreen modelData
 
             LazyLoader {
-                active: NowPlayingState.mapped
+                active: NowPlayingState.mapped && NowPlayingState.screen === nowPlayingScope.modelData?.name
 
                 NowPlayingWindow {
                     modelData: nowPlayingScope.modelData
@@ -996,7 +1034,7 @@ ShellRoot {
             required property ShellScreen modelData
 
             LazyLoader {
-                active: SysmonState.mapped
+                active: SysmonState.mapped && SysmonState.screen === sysmonScope.modelData?.name
 
                 SysmonWindow {
                     modelData: sysmonScope.modelData
