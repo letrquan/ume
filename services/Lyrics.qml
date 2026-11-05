@@ -19,6 +19,11 @@ import "lyrics.js" as Lyr
 // again after a week). Offline it stays quiet and tries again when the
 // song is wanted again 2 minutes later, never in a loop.
 //
+// Never for a browser: what it publishes as the song is the page's title,
+// and a chat tab's can hold people's names. Nothing here reads a browser's
+// "song" (songPlayer below), so it isn't looked up, sought in the saved
+// answers or logged.
+//
 // Timing: Quickshell works out the player's position from the last one it
 // was told (on seeks, play/pause and new songs). One timer waits for the
 // next line; nothing ticks between lines. While a line shows, the player's
@@ -47,17 +52,24 @@ Singleton {
     readonly property var player: Players.active
     readonly property bool playing: player?.isPlaying ?? false
 
-    readonly property string title: player?.trackTitle ?? ""
-    readonly property string artist: player?.trackArtist ?? ""
-    readonly property string album: player?.trackAlbum ?? ""
-    readonly property real duration: (player?.lengthSupported ?? false) ? (player?.length ?? 0) : 0
-    // Browsers (YouTube and the like): video titles aren't songs, and they'd
-    // go to lrclib.net too, so they're left out unless Style.lyricsBrowsers.
-    readonly property bool fromBrowser: /\b(brave|firefox|chromium|chrome|msedge|edge|vivaldi|opera|librewolf|zen|epiphany|falkon|qutebrowser|floorp|waterfox)\b/i
-        .test([player?.dbusName ?? "", player?.identity ?? "", player?.desktopEntry ?? ""].join(" "))
-    readonly property bool skipped: fromBrowser && !Style.lyricsBrowsers
-    // Not a song: nothing to look up (a stream, a long video, a browser).
-    readonly property bool lookable: title !== "" && !(duration > 15 * 60) && !skipped
+    // A browser, by any of its three names. All of the Chromium family (and
+    // apps built on it) use org.mpris.MediaPlayer2.chromium.instanceN. A letter
+    // next to a name makes it another word: gmusicbrowser is a music player.
+    function isBrowser(p) {
+        return /(?:^|[^a-z])(?:browser|brave|firefox[a-z]*|chromium|chrome|msedge|edge|vivaldi|opera|librewolf|zen|epiphany|falkon|qutebrowser|torbrowser|floorp|waterfox|thorium|iridium|konqueror|midori|icecat|seamonkey|palemoon|basilisk|ladybird|nyxt)(?:[^a-z]|$)/i
+            .test([p?.dbusName ?? "", p?.identity ?? "", p?.desktopEntry ?? ""].join(" "));
+    }
+    readonly property bool fromBrowser: isBrowser(player)
+    // The only way to the song. It asks isBrowser itself, so a new player's
+    // title can't get through while fromBrowser catches up.
+    readonly property var songPlayer: isBrowser(player) ? null : player
+
+    readonly property string title: songPlayer?.trackTitle ?? ""
+    readonly property string artist: songPlayer?.trackArtist ?? ""
+    readonly property string album: songPlayer?.trackAlbum ?? ""
+    readonly property real duration: (songPlayer?.lengthSupported ?? false) ? (songPlayer?.length ?? 0) : 0
+    // Not a song: nothing to look up (a stream, a long video).
+    readonly property bool lookable: title !== "" && !(duration > 15 * 60)
     readonly property string trackId: lookable ? [artist, title, album].join("\n") : ""
 
     // Bar items showing lines (bar/Media.qml counts itself in), and the
@@ -108,7 +120,7 @@ Singleton {
     function check() {
         const here = forKey !== "" && forKey === trackId;
         if (debug)
-            console.log("lyrics: check", JSON.stringify(title), "wanted", wanted, "current", here, "status", status);
+            console.log("lyrics: check, wanted", wanted, "current", here, "status", status);
         if (!wanted)
             return;
         if (here && status === "offline" && Date.now() - failedAt > 120000) {
@@ -124,7 +136,8 @@ Singleton {
             plain = [];
             source = "";
         }
-        // Browsers change title and artist in steps: wait for it to settle.
+        // A player can change title and artist in steps, and say what it is
+        // just after its song: wait for it to settle.
         settle.restart();
     }
 
@@ -406,7 +419,8 @@ Singleton {
             : lines.length > 0 ? "synced"
             : plain.length > 0 ? "plain"
             : "none";
-        console.log("lyrics:", status, "for", JSON.stringify(title), "(" + (lines.length || plain.length) + " lines, " + from + ")");
+        // The song the answer is for (key: its trackId), not what plays by now.
+        console.log("lyrics:", status, "for", JSON.stringify(key.split("\n")[1]), "(" + (lines.length || plain.length) + " lines, " + from + ")");
         sync();
     }
 

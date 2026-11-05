@@ -250,7 +250,6 @@ Singleton {
     readonly property int lyricsBarWidth: Settings.values.lyricsBarWidth ?? 240    // the bar's line, px (fixed, so the island doesn't move per line)
     readonly property int lyricsCardHeight: Settings.values.lyricsCardHeight ?? 176    // the card's lyrics, px
     readonly property real lyricsOffset: Settings.values.lyricsOffset ?? 0    // s; plus = lines come earlier
-    readonly property bool lyricsBrowsers: Settings.values.lyricsBrowsers ?? false    // also what plays in a browser (its video titles go to lrclib.net too)
 
     // ---- Live activities ----------------------------------------------------------
     // Moments: the middle island grows for a couple of seconds to say what

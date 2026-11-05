@@ -500,11 +500,10 @@ Singleton {
                     { name: "nowPlayingSeekStep", kind: "number", label: "← → jump", desc: "Seconds per key press", from: 2, to: 30, step: 1, format: v => Math.round(v) + " s" }
                 ] },
                 { title: "Lyrics", rows: [
-                    { name: "lyricsEnabled", kind: "bool", label: "Lyrics", desc: "Looked up on lrclib.net (it gets the song's title, artist, album and length) and kept on this computer" },
+                    { name: "lyricsEnabled", kind: "bool", label: "Lyrics", desc: "Looked up on lrclib.net (it gets the song's title, artist, album and length) and kept on this computer. Never for what plays in a browser" },
                     { name: "lyricsInCard", kind: "bool", label: "In the Now Playing card", desc: "Under the song, the line being sung lit up; click a line to go there" },
                     { name: "lyricsInBar", kind: "bool", label: "In the bar", desc: "The line being sung in place of the song's name, for songs with timed lyrics" },
                     { name: "lyricsOnDesktop", kind: "bool", label: "On the desktop", desc: "The song's lines gliding by in the music card on the desktop (timed lyrics only); click a line to go there" },
-                    { name: "lyricsBrowsers", kind: "bool", label: "From browsers", desc: "Also look up what plays in Brave, Firefox, … (YouTube titles go to lrclib.net too, and most aren't songs)" },
                     { name: "lyricsBarWidth", kind: "number", label: "Bar line width", desc: "Fixed, so the island stays put while lines change", from: 160, to: 420, step: 10, format: root.px },
                     { name: "lyricsCardHeight", kind: "number", label: "Card lyrics height", desc: "", from: 120, to: 320, step: 8, format: root.px },
                     { name: "lyricsDesktopHeight", kind: "number", label: "Desktop lyrics height", desc: "", from: 90, to: 320, step: 10, format: root.px },
