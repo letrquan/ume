@@ -500,7 +500,7 @@ Singleton {
                     { name: "nowPlayingSeekStep", kind: "number", label: "← → jump", desc: "Seconds per key press", from: 2, to: 30, step: 1, format: v => Math.round(v) + " s" }
                 ] },
                 { title: "Lyrics", rows: [
-                    { name: "lyricsEnabled", kind: "bool", label: "Lyrics", desc: "Looked up on lrclib.net (it gets the song's title, artist, album and length) and kept on this computer. Never for what plays in a browser" },
+                    { name: "lyricsEnabled", kind: "bool", label: "Lyrics", desc: "Looked up on lrclib.net (it gets the song's title, artist, album and length) and kept on this computer. Browsers it recognizes are left out" },
                     { name: "lyricsInCard", kind: "bool", label: "In the Now Playing card", desc: "Under the song, the line being sung lit up; click a line to go there" },
                     { name: "lyricsInBar", kind: "bool", label: "In the bar", desc: "The line being sung in place of the song's name, for songs with timed lyrics" },
                     { name: "lyricsOnDesktop", kind: "bool", label: "On the desktop", desc: "The song's lines gliding by in the music card on the desktop (timed lyrics only); click a line to go there" },

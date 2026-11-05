@@ -32,10 +32,13 @@ Item {
         }
     }
 
-    // What it shows: synced | plain | loading | none | instrumental | offline | browser
+    // What it shows: synced | plain | loading | none | instrumental | offline | browser | notsong
     readonly property string mode: {
         if (Lyrics.fromBrowser)
             return "browser";
+        // A long file, a stream, no title: no lookup is coming.
+        if (Lyrics.trackId === "")
+            return "notsong";
         if (!Lyrics.current || Lyrics.status === "idle" || Lyrics.status === "loading")
             return "loading";
         if (Lyrics.synced)
@@ -179,13 +182,15 @@ Item {
         icon: root.mode === "instrumental" ? "music_note" : root.mode === "offline" ? "cloud_off" : root.mode === "browser" ? "public" : "lyrics"
         title: root.mode === "loading" ? "Looking for lyrics…"
              : root.mode === "browser" ? "No lyrics for browsers"
+             : root.mode === "notsong" ? "No lyrics for this"
              : root.mode === "instrumental" ? "Instrumental"
              : root.mode === "offline" ? "Can't reach lrclib.net"
              : "No lyrics for this song"
         hint: root.mode === "instrumental" ? "No words to sing along to"
             : root.mode === "offline" ? "It tries again in a little while"
             : root.mode === "none" ? "lrclib.net doesn't have them"
-            : root.mode === "browser" ? "Page titles stay on this computer"
+            : root.mode === "browser" ? "Page titles from browsers it recognizes aren't sent"
+            : root.mode === "notsong" ? "Too long for a song, or no title"
             : " "       // keeps the line, so nothing shifts when the answer comes
     }
 
