@@ -23,14 +23,22 @@
 #   without that compositor), the inhibitor and its `sleep`, the gdbus. Not a
 #   lock it started: that stays up. It looks at the process itself, so `ss`
 #   failing later on means nothing.
-# - No such process found at the start (no `ss`, too early at login): unlike
-#   the shell's keeper it guards anyway, without the above, and says so in its
-#   log. One left over after a logout is better than none at all.
-# - One at a time, for each compositor (each login, when none was found): the
-#   next login's guard has a lock of its own, so it starts at once, even with
-#   the last one still ending. One asked to start next to a guard that's ending
-#   waits 2 s for it; next to one that stays, it leaves it to that one. Whatever
-#   else goes wrong with the lock, it guards.
+# - No such process found (no `ss`, too early at login): unlike the shell's
+#   keeper it guards anyway and says so in its log, and looks again each time
+#   until it finds it. One left over after a logout is better than none at all.
+# - One at a time, for this user, as qs-lock and its marker are: two guards
+#   locking at once could each take the other's lock for its own. The next one
+#   compares its compositor with the one the guard holding the lock is for
+#   (mine-lock-guard/holder):
+#   - The same: it leaves it to that guard (after 2 s, in case that one is
+#     ending). No pids to compare: the same login counts as the same.
+#   - One that's gone: that guard does nothing any more and is about to end, so
+#     this one guards at once, and takes the lock when it's free.
+#   - Another that's still there (a second login on another VT): it waits, and
+#     guards once it has the lock, or that compositor has gone. So until then a
+#     second login has no guard of its own, as it never had.
+#   - It can't tell (that guard knows no compositor, in another login): it
+#     guards. So it does when the lock itself doesn't work.
 #
 #   lock-guard.sh         run (mango starts it at login)
 #   lock-guard.sh idle    hypridle's idle step (above)
@@ -49,6 +57,10 @@ run=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 dir=$run/mine-lock-guard
 marker=$run/qs-lock.secure      # lock.qml: the compositor confirmed the lock
 every=${MINE_GUARD_WATCH:-5}
+# A positive number: read would spin on 0, and fail on anything else.
+if ! [[ $every =~ ^[0-9]*\.?[0-9]+$ && $every =~ [1-9] ]]; then
+    every=5
+fi
 mkdir -p "$dir"
 
 log() {
@@ -80,11 +92,6 @@ case ${WAYLAND_DISPLAY:-wayland-0} in
 /*) sock=$WAYLAND_DISPLAY ;;
 *) sock=$run/${WAYLAND_DISPLAY:-wayland-0} ;;
 esac
-# The pid listening on the Wayland socket (none on a file left behind by a
-# compositor that crashed).
-listener() {
-    timeout 2 ss -xlpn src "$sock" 2>/dev/null | grep -o 'pid=[0-9]*' | head -n 1 | cut -d= -f2
-}
 # read_stat <pid>: sets $state and $began from /proc/<pid>/stat (what follows
 # the name, which can hold anything; the start time tells it from a later
 # process with the same pid). Fails if it can't be read.
@@ -96,55 +103,109 @@ read_stat() {
     state=${1:-}
     began=${20:-}
 }
-# Only true "gone" ends a guard, so anything unclear counts as alive.
-compositor_alive() {
-    if [ -z "$compositor" ]; then
-        return 0
-    fi
-    if ! read_stat "$compositor"; then
-        kill -0 "$compositor" 2>/dev/null
+# is_up <pid> <start time>: only a true "gone" ends a guard, so anything unclear
+# counts as there.
+is_up() {
+    if ! read_stat "$1"; then
+        kill -0 "$1" 2>/dev/null
         return
     fi
     case $state in
     Z | X) return 1 ;;  # ended, its parent hasn't noticed yet
     esac
-    [ -z "$began" ] || [ -z "$compositor_began" ] || [ "$began" = "$compositor_began" ]
+    [ -z "$began" ] || [ -z "$2" ] || [ "$began" = "$2" ]
 }
 compositor=""
 compositor_began=""
-for _ in 1 2 3 4; do
-    compositor=$(listener)
-    if [ -n "$compositor" ]; then
-        break
-    fi
-    sleep 0.5
-done
-if [ -n "$compositor" ] && read_stat "$compositor"; then
-    compositor_began=$began
-fi
-guards=${compositor:+compositor pid $compositor}
+compositor_alive() {
+    [ -z "$compositor" ] || is_up "$compositor" "$compositor_began"
+}
+# find_compositor: what's listening on the Wayland socket (nothing on a file left
+# behind by a compositor that crashed). The first started of what ss lists: a
+# child it forks holds the socket as well, until that runs what it was forked for.
+find_compositor() {
+    local p
+    for p in $(timeout 2 ss -xlpn src "$sock" 2>/dev/null | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -nu); do
+        if read_stat "$p" && { [ -z "$compositor" ] || [ "${began:-0}" -lt "${compositor_began:-0}" ]; }; then
+            compositor=$p
+            compositor_began=$began
+        fi
+    done
+}
+find_compositor
 
-# One at a time, for each compositor. Nothing started from here may keep fd 9
-# (hence the 9>&- below, and 8<&- for what gdbus says): a leftover holding it
-# would turn the next guard away. The start time is in the name for a later
-# process with the same pid: that one's guard isn't this compositor's. flock's 1
-# is the wait running out, so another guard is there; anything else is a lock
-# that doesn't work, and no reason not to guard.
-key=${compositor:+$compositor-$compositor_began}
-lockfile=$dir/running.${key:-session-${XDG_SESSION_ID:-$$}}
-exec 9>"$lockfile"
-flock -w 2 9
-got=$?
-case $got in
-0) ;;
-1)
-    log "another guard runs for ${guards:-this login}: leaving it to that one"
-    exit 0
-    ;;
-*)
-    log "couldn't take the lock (flock said $got): guarding anyway"
-    ;;
-esac
+# ---- One at a time -------------------------------------------------------------
+# Nothing started from here may keep fd 9 (hence the 9>&- below, and 8<&- for
+# what gdbus says): a leftover holding it would turn the next guard away.
+exec 9>"$dir/lock"
+locked=""
+# take_lock <flock's options>: fails if another guard holds it. flock's 1 is just
+# that; anything else is a lock that doesn't work, and no reason not to guard.
+take_lock() {
+    flock "$@" 9
+    local got=$?
+    case $got in
+    0) note_holder ;;
+    1) return 1 ;;
+    *) log "couldn't take the lock (flock said $got): guarding anyway" ;;
+    esac
+    locked=1
+}
+# What the next guard compares with. Whole or not at all: it can read it any time.
+note_holder() {
+    printf '%s %s %s\n' "${compositor:--}" "${compositor_began:--}" "${XDG_SESSION_ID:--}" >"$dir/holder.new" &&
+        mv -f "$dir/holder.new" "$dir/holder"
+}
+# judge_holder: sets $holder, about the guard holding the lock: same (it's for
+# this compositor, or this login), other (for another compositor that's still
+# there), over (its compositor has gone), unknown (can't tell).
+judge_holder() {
+    local c="" b="" login=""
+    { read -r c b login <"$dir/holder"; } 2>/dev/null
+    case $c in
+    "" | *[!0-9]*) c="" ;;
+    esac
+    case $b in
+    "" | *[!0-9]*) b="" ;;
+    esac
+    if [ -n "$c" ] && ! is_up "$c" "$b"; then
+        holder=over
+    elif [ -n "${XDG_SESSION_ID:-}" ] && [ "$login" = "$XDG_SESSION_ID" ] && { [ -z "$c" ] || [ -z "$compositor" ]; }; then
+        holder=same
+    elif [ -z "$c" ]; then
+        holder=unknown
+    elif [ -z "$compositor" ]; then
+        holder=other
+    elif [ "$c" = "$compositor" ] && [ "$b" = "$compositor_began" ]; then
+        holder=same
+    else
+        holder=other
+    fi
+}
+if ! take_lock -n; then
+    judge_holder
+    if [ "$holder" = same ] && ! take_lock -w 2; then
+        log "another guard runs for this compositor: leaving it to that one"
+        exit 0
+    fi
+    if [ "$holder" = other ]; then
+        log "another login's guard holds the lock: this one waits (compositor: ${compositor:-not found})"
+    fi
+    while [ "$holder" = other ] && ! take_lock -w "$every"; do
+        if ! compositor_alive; then
+            log "the compositor (pid $compositor) is gone (logout?), and this one never started: ending"
+            exit 0
+        fi
+        if [ -z "$compositor" ]; then
+            find_compositor
+        fi
+        judge_holder
+        if [ "$holder" = same ]; then
+            log "another guard runs for this compositor: leaving it to that one"
+            exit 0
+        fi
+    done
+fi
 
 # ---- Before sleep --------------------------------------------------------------
 # The inhibitor lives as long as its `sleep`: ending that lets go of it.
@@ -211,24 +272,42 @@ monitor() {
 # ---- Ending --------------------------------------------------------------------
 idler=""
 listening=""
+helper=""   # the wait before listening again
 stop() {
     trap '' TERM INT HUP
     release
-    if [ -n "$listening" ]; then
-        kill "$listening" 2>/dev/null
-    fi
-    if [ -n "$idler" ]; then
-        kill "$idler" 2>/dev/null
-    fi
+    for p in "$listening" "$helper" "$idler"; do
+        if [ -n "$p" ]; then
+            kill "$p" 2>/dev/null
+        fi
+    done
     exit 0
 }
 trap stop TERM INT HUP
-# The lock file only ever meant this compositor. The rest (hypridle.conf, the
-# logs) stays: the next login's guard is using them.
+# Its files (hypridle.conf, holder, the logs) stay: the next login's guard is
+# using them.
 gone() {
     log "the compositor (pid $compositor) is gone (logout?): ending"
-    rm -f "$lockfile"
     stop
+}
+# look: what it couldn't settle at the start, each time the wait below is over.
+look() {
+    if [ -z "$compositor" ]; then
+        find_compositor
+        if [ -n "$compositor" ]; then
+            log "found the compositor (pid $compositor): watching it now"
+            if [ -n "$locked" ]; then
+                note_holder
+            fi
+        fi
+    fi
+    if [ -z "$locked" ] && ! take_lock -n; then
+        judge_holder
+        if [ "$holder" = same ]; then
+            log "another guard runs for this compositor: leaving it to that one"
+            stop
+        fi
+    fi
 }
 
 # ---- Idle ----------------------------------------------------------------------
@@ -246,7 +325,8 @@ listener {
 }
 EOF
     # hypridle dies with the compositor, and the next login's can have the same
-    # socket name: without the check it would start again and join that one. In
+    # socket name: without the check it would start again and join that one (one
+    # found later isn't known here: stop ends this then, at the next look). In
     # the background, so a TERM ends this right away, and what's running with it.
     (
         trap 'kill "${!:-}" 2>/dev/null; exit 0' TERM
@@ -261,12 +341,13 @@ EOF
 fi
 
 if [ -z "$compositor" ]; then
-    log "no compositor found on $sock: guarding without watching for it, so this one won't end at logout"
+    log "no compositor found on $sock: guarding without watching for it, and looking again every $every s"
 fi
+watching=${compositor:+compositor pid $compositor}
 if [ -n "$idler" ]; then
-    log "started (${guards:-no compositor to watch}); idle: locks after $((after + ${MINE_GUARD_IDLE_EXTRA:-60})) s if the shell doesn't answer"
+    log "started (${watching:-no compositor found}); idle: locks after $((after + ${MINE_GUARD_IDLE_EXTRA:-60})) s if the shell doesn't answer"
 else
-    log "started (${guards:-no compositor to watch}); idle: off (lockAfter is $after)"
+    log "started (${watching:-no compositor found}); idle: off (lockAfter is $after)"
 fi
 while compositor_alive; do
     hold
@@ -283,6 +364,7 @@ while compositor_alive; do
         fi
         if [ "$got" -gt 128 ]; then
             part+=$line
+            look
             continue
         fi
         if [ "$got" -ne 0 ]; then
@@ -300,12 +382,19 @@ while compositor_alive; do
             ;;
         esac
     done
+    # Saying nothing more doesn't have to mean it ended.
+    kill "$listening" 2>/dev/null
     exec 8<&-
     listening=""
     if [ -n "${MINE_GUARD_MONITOR:-}" ]; then
         stop
     fi
-    # logind restarted or gdbus ended: listen again.
-    sleep 2
+    # logind restarted or gdbus ended: listen again. Background + wait: a TERM
+    # ends the guard right away, not after the sleep.
+    sleep 2 9>&- &
+    helper=$!
+    wait "$helper"
+    helper=""
+    look
 done
 gone
