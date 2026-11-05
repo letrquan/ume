@@ -118,7 +118,8 @@ Developed on CachyOS with these versions:
 | Clipboard | `wl-clipboard`, `cliphist`, `wl-clip-persist` |
 | Screenshots | `grim`, `slurp`, `swappy`, `tesseract` (OCR), `hyprpicker`, `wf-recorder`, `imagemagick` |
 | System | `brightnessctl`, `wlsunset`, `hypridle`, `iio-sensor-proxy`, `iproute2`, `jq`, `curl` |
-| Optional | `cava` (visualizer), `kdeconnect` (phone), `wtype` (on-screen keyboard), `hyprlock` (lock fallback), `howdy` (face unlock), `greetd` + `cage` (login screen) |
+| Apps | `xdg-terminal-exec` (terminal apps from the launcher and dock, the Updates terminal; set your default terminal in `~/.config/xdg-terminals.list`, e.g. a line `foot.desktop`), `micro` (the "Edit Style.qml" button), `libnotify` (`notify-send`), `xdg-utils` (`xdg-open`) |
+| Optional | `cava` (visualizer), `kdeconnect` (phone; `kdialog` or `zenity` to pick files to send), `ffmpeg` (thumbnail for screen recordings), `wtype` (on-screen keyboard), `hyprlock` (lock fallback), `howdy` (face unlock), `greetd` + `cage` (login screen) |
 | Optional, newer parts | `socat` (faster key binds; without it they go through `qs ipc`), `networkmanager` (hotspot, Wi-Fi QR), `qrencode` (Wi-Fi QR), `zbar` (QR scan), `songrec` (name that song), `tailscale`, `udisks2` (USB drives), `pacman-contrib` + `paru` + `flatpak` (updates), `efibootmgr` (restart to Windows), `tesseract-data-vie` (translate from Vietnamese) |
 
 The icon theme is set to `ZorinGrey-Dark` at the top of `shell.qml`, `lock.qml` and
@@ -139,6 +140,11 @@ That file starts the shell (`mine start`, which restarts it if it crashes), star
 (`scripts/lock-guard.sh`) and binds the keys.
 
 To try it without mango's keybinds, run `qs -c mine`.
+
+fcitx5-lotus users: one user saw the launcher drop Vietnamese letters while typing, with Qt's
+built-in text-input-v3 path. Adding `env=QT_IM_MODULE,fcitx` to `~/.config/mango/config.conf`
+stopped it there. This is a report from that one setup, not a measured rate, and the shell does not
+set it for you because that would force fcitx on people who don't use it.
 
 ### Settings
 
@@ -176,6 +182,17 @@ Written on an HP OmniBook 2-in-1 (AMD, 1.25 scale, OLED). Some parts assume it:
 
 `extras/bin/mine` also falls back to [Noctalia](https://github.com/noctalia-dev/noctalia-shell)
 when the shell isn't running. Without Noctalia, those fallbacks just do nothing.
+
+Two GPUs: which card is primary comes from mango and wlroots, not the shell. In one reported setup,
+`env=WLR_DRM_DEVICES,/dev/dri/card1:/dev/dri/card2` in `~/.config/mango/config.conf` made the Intel
+card primary. `/dev/dri/by-path` names contain colons, so they can't go in this list. `cardN` numbers
+can swap between boots. Heavy apps then need PRIME offload to use the other GPU.
+
+Held keys: mango repeats a plain `bind` while the key is held, so holding a toggle can flip it back.
+mango 0.18.5 and its main branch have no per-bind flag to stop that (the bind flags are `s`, `l`,
+`r`, `p` and `c`); there is an open request for one:
+[mangowm/mango#1527](https://github.com/mangowm/mango/issues/1527). Raising `repeat_delay` in
+mango's config makes the repeat start later, which helps if you hold keys a little too long.
 
 ## Layout
 
