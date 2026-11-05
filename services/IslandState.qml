@@ -22,6 +22,18 @@ Singleton {
     property bool nowPlayingCovering: false
     readonly property bool takenOver: notifCovering || launcherCovering || clipboardCovering || calendarCovering || pickerCovering || activityCovering || nowPlayingCovering
 
+    // takenOver, on one screen's bar: a panel stands in for the island only on
+    // the screen it opened on (Monitors.panelScreen); notifications and live
+    // activities show on every screen.
+    function takenOverOn(screenName) {
+        return notifCovering || activityCovering
+            || (launcherCovering && LauncherState.screen === screenName)
+            || (clipboardCovering && ClipboardState.screen === screenName)
+            || (calendarCovering && CalendarState.screen === screenName)
+            || (pickerCovering && Wallpaper.pickerScreen === screenName)
+            || (nowPlayingCovering && NowPlayingState.screen === screenName);
+    }
+
     property real rightWidth: 300
     property bool controlCovering: false
 

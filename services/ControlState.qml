@@ -23,18 +23,22 @@ Singleton {
     onPageChanged: if (page !== "main") editing = false
 
     readonly property bool dryRun: Quickshell.env("MINE_CC_DRYRUN") === "1"
+    // The screen it's on (Monitors.panelScreen), from opening until it's gone.
+    property string screen: ""
 
-    function toggle(p) {
+    function toggle(p, onScreen) {
         const want = p || "main";
         if (open && page === want)
             close();
         else
-            show(want);
+            show(want, onScreen);
     }
 
-    function show(p) {
+    function show(p, onScreen) {
         page = p || "main";
         unmap.stop();
+        if (!mapped)
+            screen = Monitors.panelScreen(onScreen);
         // open first: the window is created the moment `mapped` turns on,
         // and must see the panel open already.
         open = true;

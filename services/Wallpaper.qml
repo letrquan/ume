@@ -46,6 +46,8 @@ Singleton {
 
     property bool pickerOpen: false
     property bool pickerMapped: false
+    // The screen it's on (Monitors.panelScreen), from opening until it's gone.
+    property string pickerScreen: ""
 
     readonly property string home: Quickshell.env("HOME")
     readonly property bool dryRun: Quickshell.env("MINE_WALLPAPER_DRYRUN") === "1"
@@ -125,6 +127,8 @@ Singleton {
     function setPicker(open) {
         if (open) {
             pickerUnmap.stop();
+            if (!pickerMapped)
+                pickerScreen = Monitors.panelScreen();
             pickerMapped = true;
             scan();
         } else {

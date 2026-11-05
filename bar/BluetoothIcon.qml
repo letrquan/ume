@@ -21,7 +21,7 @@ Clickable {
     visible: wanted
     tip: !root.powered ? "Bluetooth is off" : root.connected > 0 ? "Bluetooth" : "Bluetooth: nothing connected"
     tipDetail: root.names
-    onClicked: ControlState.toggle("bluetooth")
+    onClicked: ControlState.toggle("bluetooth", Monitors.screenOf(root))
 
     Icon {
         anchors.verticalCenter: parent.verticalCenter

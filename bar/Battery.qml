@@ -43,7 +43,7 @@ Clickable {
         if (button === Qt.LeftButton && Style.batteryPopup)
             BarPopupState.toggle("battery", win?.screen?.name ?? "", win ? win.itemRect(root) : Qt.rect(0, 0, 0, 0));
         else
-            ControlState.toggle("main");
+            ControlState.toggle("main", Monitors.screenOf(root));
     }
     onClicked: mouse => route(mouse.button)
 

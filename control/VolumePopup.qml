@@ -322,7 +322,7 @@ Item {
                     plain: true
                     onClicked: {
                         VolumeState.close();
-                        ControlState.show("audio");
+                        ControlState.show("audio", VolumeState.screen);
                     }
                 }
             }

@@ -102,7 +102,7 @@ Reveal {
                 else if (mouse.button === Qt.MiddleButton || !Style.nowPlayingEnabled)
                     root.player?.togglePlaying();
                 else
-                    NowPlayingState.toggle();
+                    NowPlayingState.toggle(Monitors.screenOf(root));
             }
             onWheel: wheel => {
                 if (wheel.angleDelta.y > 0)

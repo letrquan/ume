@@ -19,7 +19,7 @@ Reveal {
         spacing: 10
         tip: "Devices"
         tipDetail: Peripherals.devices.map(d => d.name + " · " + d.percent + "%" + (d.charging ? " · charging" : "")).join("\n")
-        onClicked: ControlState.toggle("bluetooth")
+        onClicked: ControlState.toggle("bluetooth", Monitors.screenOf(root))
 
         Repeater {
             model: Peripherals.devices

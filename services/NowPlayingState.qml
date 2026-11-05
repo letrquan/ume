@@ -17,6 +17,8 @@ Singleton {
 
     property bool open: false
     property bool mapped: false
+    // The screen it's on (Monitors.panelScreen), from opening until it's gone.
+    property string screen: ""
 
     readonly property bool dryRun: Quickshell.env("MINE_NOWPLAYING_DRYRUN") === "1"
 
@@ -29,14 +31,14 @@ Singleton {
         Players.pick(p);
     }
 
-    function toggle() {
+    function toggle(want) {
         if (open)
             close();
         else
-            show();
+            show(want);
     }
 
-    function show() {
+    function show(want) {
         if (!Style.nowPlayingEnabled || player === null)
             return;
         LauncherState.close();          // they share the middle island
@@ -45,6 +47,8 @@ Singleton {
         if (Wallpaper.pickerOpen)
             Wallpaper.setPicker(false);
         unmap.stop();
+        if (!mapped)
+            screen = Monitors.panelScreen(want);
         // open first: the window is created the moment `mapped` turns on,
         // and must see the card open already.
         open = true;

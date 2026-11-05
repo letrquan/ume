@@ -22,6 +22,9 @@ Scope {
     property bool started: false
     // The latest line as is (the overview starts from it).
     property var latest: null
+    // mango's focus is on this monitor. It follows the pointer across screens,
+    // and every change prints a line.
+    property bool focused: false
 
     function view(tag: int) {
         Quickshell.execDetached(["mmsg", "dispatch", "view," + tag]);
@@ -48,6 +51,7 @@ Scope {
                     return;
                 }
                 root.latest = state;
+                root.focused = state.active === true;
                 root.tags = (state.tags ?? []).map(t => ({
                     index: t.index,
                     active: t.is_active,

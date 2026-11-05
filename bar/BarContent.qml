@@ -134,7 +134,7 @@ Item {
         y: Style.islandTop
         delay: 0
         // The System popup can grow out of any island (SysmonState).
-        hidden: IslandState.sysmonCovering && IslandState.sysmonIsland === "left"
+        hidden: IslandState.sysmonCovering && IslandState.sysmonIsland === "left" && SysmonState.screen === root.screenName
         visible: leftRepeater.count > 0
         width: visible ? implicitWidth : 0
         onWidthChanged: IslandState.leftWidth = width
@@ -155,7 +155,7 @@ Item {
         // In one bar it stays an island of its own (Style.barCenterIsland).
         keepGlass: Style.barCenterIsland
         // A notification grows out of this island and stands in for it.
-        hidden: IslandState.takenOver || (IslandState.sysmonCovering && IslandState.sysmonIsland === "center")
+        hidden: IslandState.takenOverOn(root.screenName) || (IslandState.sysmonCovering && IslandState.sysmonIsland === "center" && SysmonState.screen === root.screenName)
         visible: centerRepeater.count > 0
         width: visible ? implicitWidth : 0
         onWidthChanged: IslandState.centerWidth = width
@@ -182,7 +182,7 @@ Item {
         y: Style.islandTop
         delay: Style.dropInDelay * 2
         // The control center grows out of this island and stands in for it.
-        hidden: IslandState.controlCovering || (IslandState.sysmonCovering && IslandState.sysmonIsland === "right")
+        hidden: (IslandState.controlCovering && ControlState.screen === root.screenName) || (IslandState.sysmonCovering && IslandState.sysmonIsland === "right" && SysmonState.screen === root.screenName)
         visible: rightRepeater.count > 0
         width: visible ? implicitWidth : 0
         onWidthChanged: IslandState.rightWidth = width
@@ -237,7 +237,7 @@ Item {
             icon: "tune"
             tip: "Control center"
             tipShortcut: "mine:control-center"
-            onClicked: ControlState.toggle("main")
+            onClicked: ControlState.toggle("main", root.screenName)
         }
     }
     Component {

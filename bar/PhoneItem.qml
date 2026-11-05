@@ -24,7 +24,7 @@ Reveal {
         opacity: Phone.connected ? 1 : 0.45
         tip: Phone.device?.name ?? "Phone"
         tipDetail: Phone.summary
-        onClicked: ControlState.toggle("phone")
+        onClicked: ControlState.toggle("phone", Monitors.screenOf(root))
 
         Behavior on opacity {
             NumberAnimation { duration: Motion.normal }

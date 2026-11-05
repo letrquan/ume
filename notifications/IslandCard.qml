@@ -389,6 +389,7 @@ Item {
                             if (root.replyOpen) {
                                 Notifs.replying = "";
                             } else if (root.shown) {
+                                Notifs.replyingScreen = Monitors.screenOf(root);
                                 Notifs.replying = root.shown.key;
                                 // Once the window has the keyboard.
                                 Qt.callLater(() => replyField.focusField());

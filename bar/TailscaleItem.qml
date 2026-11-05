@@ -13,7 +13,7 @@ Clickable {
 
     tip: "Tailscale"
     tipDetail: Tailscale.summary
-    onClicked: ControlState.toggle("tailscale")
+    onClicked: ControlState.toggle("tailscale", Monitors.screenOf(root))
 
     // Keeps its state fresh while it's on the bar.
     Component.onCompleted: Tailscale.use("bar", true)
